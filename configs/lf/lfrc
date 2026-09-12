@@ -1,0 +1,19 @@
+set editor nvim
+set previewer $PWD/preview.sh
+set previewsize 500
+set colorscheme default
+set hidden false
+set sortby mtime
+set icons true
+set numbers left
+
+bind q kill
+bind E set hidden!
+bind H cd ..
+bind L accept
+bind / regex
+bind ? filter
+bind n sortby name
+bind m sortby mtime
+bind s set sortby size
+bind I set icons!
