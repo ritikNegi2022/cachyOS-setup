@@ -1,6 +1,6 @@
 --- a/config.h
 +++ b/config.h
-@@ -1,6 +1,6 @@
+@@ -1,8 +1,8 @@
  /* See LICENSE file for copyright and license details. */
  
  /* appearance */
@@ -13,32 +13,44 @@
 -static const char *fonts[]          = { "monospace:size=10" };
 -static const char dmenufont[]       = "monospace:size=10";
 +static const char *fonts[]          = { "JetBrains Mono:size=11" };
-+static const char dmenufont[]       = "JetBrains Mono:size=11";
  static const char col_gray1[]       = "#222222";
  static const char col_gray2[]       = "#444444";
-@@ -13,13 +13,13 @@ static const char col_cyan[]        = "#005577";
- static const char *colors[][3]      = {
- 	/*               fg         bg         border   */
- 	[SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
- 	[SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
+ static const char col_gray3[]       = "#bbbbbb";
+@@ -15,16 +15,19 @@ static const char *colors[][3]      = {
  };
  
  /* tagging */
 -static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
-+static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10" };
++static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11" };
  
  static const Rule rules[] = {
  	/* xprop(1):
-@@ -27,6 +27,9 @@ static const Rule rules[] = {
+ 	 *
+ 	 *	WM_CLASS(STRING) = instance, class
+ 	 *	WM_NAME(STRING) = title
+ 	 */
+ 	/* class      instance    title       tags mask     isfloating   monitor */
  	{ "Gimp",     NULL,       NULL,       0,            1,           -1 },
- 	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
+-	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
++	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },    /* tag 9 = browser */
 +	{ "Firefox",  NULL,       "Private",  1 << 8,       0,           -1 },
 +	{ "Chromium", NULL,       NULL,       1 << 8,       0,           -1 },
 +	{ "Chrome",   NULL,       NULL,       1 << 8,       0,           -1 },
++	{ "Zed",      NULL,       NULL,       1 << 9,       0,           -1 },    /* tag 10 = Zed editor */
  };
  
  /* layout(s) */
-@@ -38,6 +41,7 @@ static const int refreshrate = 120;  /* refresh rate (per second) for clien
+@@ -37,6 +40,7 @@ static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen
+ 																											  * window */
+ 
+ /* key definitions */
+-#define MODKEY Mod1Mask
++#define MODKEY Mod4Mask                    /* Super/Windows key */
++
+ #define TAGKEYS(KEY,TAG) \
+ 		{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
+ 		{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
+@@ -53,17 +57,12 @@ static const char dmenumon[2] = "0"; /* component of dmenucmd, manipulated
  																												  * 120 may cause high CPU usage. Set to 60 or 30 for low CPU usage.
  																												  * Set to 0 to disable. */
  
@@ -47,58 +59,130 @@
  	/* symbol     arrange function */
  	{ "[]=",      tile },    /* first entry is default */
  	{ "><>",      NULL },    /* no layout function means floating behavior */
-@@ -50,7 +54,7 @@ static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen
- 																											  * window */
+ 	{ "[M]",      monocle },
+ };
  
- /* key definitions */
--#define MODKEY Mod1Mask
-+#define MODKEY Mod4Mask                    /* Super/Windows key */
- #define TAGKEYS(KEY,TAG) \
- 		{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
- 		{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
-@@ -68,7 +72,7 @@ static const char dmenumon[2] = "0"; /* component of dmenucmd, manipulated
- 
- static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
+ /* commands */
+-static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
+-static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
 -static const char *termcmd[]  = { "st", NULL };
 +static const char *termcmd[]  = { "alacritty", NULL };
++static const char *zedshell[] = { "/bin/sh", "-c", "zed", NULL };
  
  static const Key keys[] = {
-@@ -77,8 +81,10 @@ static const Key keys[] = {
- 	{ MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
- 	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
-+	{ MODKEY,                       XK_d,      spawn,          {.v = dmenucmd } },
+@@ -71,22 +70,30 @@ static const Key keys[] = {
+ 	/* modifier                     key        function        argument */
+-	{ MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
++	{ MODKEY,                       XK_Return, spawn,          {.v = termcmd } },    /* Super+Enter: alacritty */
++	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },    /* Super+Shift+Enter: alacritty (duplicate, remove if unwanted) */
  	{ MODKEY,                       XK_b,      togglebar,      {0} },
+-	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
+-	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
+-	{ MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
+-	{ MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
++	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },        /* Super+j: focus next */
++	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },        /* Super+k: focus prev */
++	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },      /* Super+h: shrink master */
++	{ MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },      /* Super+l: grow master */
++	{ MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },        /* Super+i: more masters */
++	{ MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },        /* Super+d: fewer masters */
++	{ MODKEY|ShiftMask,             XK_h,      setmfact,       {.f = +0.05} },
++	{ MODKEY|ShiftMask,             XK_l,      setmfact,       {.f = -0.05} },
 +
- 	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
- 	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
-@@ -97,6 +103,7 @@ static const Key keys[] = {
- 	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
- 	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
- 	{ MODKEY,                       XK_period, focusmon,       {.i = +1 } },
++	{ MODKEY,                       XK_Tab,    view,           {0} },               /* Super+Tab: cycle views */
++	{ MODKEY|ShiftMask,             XK_c,      killclient,     {0} },               /* Super+Shift+c: close */
++	{ MODKEY,                       XK_t,      setlayout,      {.v = &layouts[0]} }, /* Super+t: tile */
++	{ MODKEY,                       XK_f,      setlayout,      {.v = &layouts[1]} }, /* Super+f: floating */
++	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} }, /* Super+m: monocle */
++	{ MODKEY,                       XK_space,  setlayout,      {0} },               /* Super+space: toggle layout */
++	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },              /* Super+Shift+space: toggle float */
++
++	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },       /* Super+0: view all */
++	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
++	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },        /* Super+comma: prev monitor */
++	{ MODKEY,                       XK_period, focusmon,       {.i = +1 } },        /* Super+period: next monitor */
 +	{ MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
 +	{ MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
- 	TAGKEYS(                        XK_1,                      0)
- 	TAGKEYS(                        XK_2,                      1)
-@@ -115,6 +122,12 @@ static const Key keys[] = {
- 													 * 1 = clockwise, -1 = counterclockwise */
- 
- 	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
-+	{ MODKEY|ShiftMask,             XK_r,      restartsig,     {.s = SIGUSR1} }, /* restart dwm */
-+	{ MODKEY,                       XK_s,      spawn,          SHCMD("exec alacritty -e tmux") }, /* tmux directly */
-+	{ MODKEY|ShiftMask,             XK_s,      spawn,          SHCMD("exec alacritty -e lazygit") }, /* lazygit */
-+	{ MODKEY,                       XK_l,      spawn,          SHCMD("exec alacritty -e lf") }, /* lf file manager */
-+	{ MODKEY|ShiftMask,             XK_l,      spawn,          SHCMD("exec alacritty -e btop") }, /* btop */
++
++	/* Direct app launches — no dmenu */
++	{ MODKEY,                       XK_s,      spawn,          SHCMD("exec alacritty -e tmux") }, /* Super+s: tmux */
++	{ MODKEY|ShiftMask,             XK_s,      spawn,          SHCMD("exec alacritty -e lazygit") }, /* Super+Shift+s: lazygit */
++	{ MODKEY,                       XK_g,      spawn,          SHCMD("exec alacritty -e lf") },    /* Super+g: lf file manager */
++	{ MODKEY|ShiftMask,             XK_g,      spawn,          SHCMD("exec alacritty -e btop") },  /* Super+Shift+g: btop */
++	{ MODKEY,                       XK_e,      spawn,          {.v = zedshell } },  /* Super+e: Zed editor */
++	{ MODKEY|ShiftMask,             XK_e,      spawn,          SHCMD("exec alacritty -e nvim") }, /* Super+Shift+e: nvim */
++	{ MODKEY,                       XK_b,      spawn,          SHCMD("exec firefox") }, /* Super+b: browser */
++
++	{ MODKEY,                       XK_1,      view,           {.ui = 1 << 0} },
++	{ MODKEY,                       XK_2,      view,           {.ui = 1 << 1} },
++	{ MODKEY,                       XK_3,      view,           {.ui = 1 << 2} },
++	{ MODKEY,                       XK_4,      view,           {.ui = 1 << 3} },
++	{ MODKEY,                       XK_5,      view,           {.ui = 1 << 4} },
++	{ MODKEY,                       XK_6,      view,           {.ui = 1 << 5} },
++	{ MODKEY,                       XK_7,      view,           {.ui = 1 << 6} },
++	{ MODKEY,                       XK_8,      view,           {.ui = 1 << 7} },
++	{ MODKEY,                       XK_9,      view,           {.ui = 1 << 8} },        /* tag 9 = browser */
++	{ MODKEY,                       XK_0,      view,           {.ui = 1 << 9} },        /* tag 10 = Zed */
++	{ MODKEY,                       XK_akparen, view,          {.ui = 1 << 10} },     /* tag 11 = spare (bracket key) */
++
++	TAGKEYS(                        XK_1,                      0)
++	TAGKEYS(                        XK_2,                      1)
++	TAGKEYS(                        XK_3,                      2)
++	TAGKEYS(                        XK_4,                      3)
++	TAGKEYS(                        XK_5,                      4)
++	TAGKEYS(                        XK_6,                      5)
++	TAGKEYS(                        XK_7,                      6)
++	TAGKEYS(                        XK_8,                      7)
++	TAGKEYS(                        XK_9,                      8)
++	TAGKEYS(                        XK_0,                      9)
++	TAGKEYS(                        XK_bracketleft,              10)              /* [ key = tag 11 */
++
++	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },               /* Super+Shift+q: quit dwm */
++	{ MODKEY|ShiftMask,             XK_r,      restartsig,     {.s = SIGUSR1} },    /* Super+Shift+r: restart dwm */
++
++	/* Focus navigation */
++	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
++	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
+ 	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
+ 	{ MODKEY,                       XK_period, focusmon,       {.i = +1 } },
+-	{ MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
+-	{ MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
+-	TAGKEYS(                        XK_1,                      0)
+-	TAGKEYS(                        XK_2,                      1)
+-	TAGKEYS(                        XK_3,                      2)
+-	TAGKEYS(                        XK_4,                      3)
+-	TAGKEYS(                        XK_5,                      4)
+-	TAGKEYS(                        XK_6,                      5)
+-	TAGKEYS(                        XK_7,                      6)
+-	TAGKEYS(                        XK_8,                      7)
+-	TAGKEYS(                        XK_9,                      8)
+-	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
++	TAGKEYS(                        XK_1,                      0)
++	TAGKEYS(                        XK_2,                      1)
++	TAGKEYS(                        XK_3,                      2)
++	TAGKEYS(                        XK_4,                      3)
++	TAGKEYS(                        XK_5,                      4)
++	TAGKEYS(                        XK_6,                      5)
++	TAGKEYS(                        XK_7,                      6)
++	TAGKEYS(                        XK_8,                      7)
++	TAGKEYS(                        XK_9,                      8)
++	TAGKEYS(                        XK_0,                      9)
++	TAGKEYS(                        XK_bracketleft,              10)
  };
  
  /* button definitions */
-@@ -127,6 +140,7 @@ static const Button buttons[] = {
+@@ -96,6 +125,7 @@ static const Button buttons[] = {
  	{ ClkLtSymbol,          0,              Button1,        setlayout,      {0} },
  	{ ClkLtSymbol,          0,              Button3,        setlayout,      {.v = &layouts[2]} },
  	{ ClkWinTitle,          0,              Button2,        zoom,           {0} },
 -	{ ClkStatusText,        0,              Button2,        spawn,          {.v = termcmd } },
-+	{ ClkStatusText,        0,              Button2,        spawn,          {.v = termcmd } }, /* click bar to open terminal (bar disabled, but kept for if enabled) */
++	{ ClkStatusText,        0,              Button2,        spawn,          {.v = termcmd } }, /* click bar (if enabled) opens terminal */
  	{ ClkClientWin,         MODKEY,         Button1,        movemouse,      {0} },
  	{ ClkClientWin,         MODKEY,         Button2,        togglefloating, {0} },
  	{ ClkClientWin,         MODKEY,         Button3,        resizemouse,    {0} },
-+	{ ClkTagBar,            MODKEY|ShiftMask, Button1,       tag,            {0} }, /* Super+Shift+click tag to move window there */
++	{ ClkTagBar,            MODKEY|ShiftMask, Button1,       tag,            {0} },    /* Super+Shift+click tag → move window to tag */
++	{ ClkTagBar,            0,              Button1,        view,           {0} },
++	{ ClkTagBar,            0,              Button3,        toggleview,     {0} },
++	{ ClkTagBar,            MODKEY,         Button1,        tag,            {0} },
++	{ ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
  };

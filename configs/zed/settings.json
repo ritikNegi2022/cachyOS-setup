@@ -1,0 +1,303 @@
+{
+  "// ── THEME & APPEARANCE ──────────────────────────────────────────────": "",
+  "cli_default_open_behavior": "new_window",
+  "theme": "One Dark",
+  "theme_overrides": {
+    "One Dark": {
+      "editor.document_highlight.read_background": "#00000000",
+      "editor.document_highlight.write_background": "#00000000",
+      "border": "#00000000",
+      "border.variant": "#00000000",
+      "border.focused": "#3b82f680",
+      "elevated_surface.background": "#1e1e2e",
+      "surface.background": "#1e1e2e",
+      "element.background": "#1e1e2e",
+      "title_bar.background": "#282c34",
+      "toolbar.background": "#11111b",
+      "tab_bar.background": "#11111b",
+      "tab.inactive_background": "#11111b",
+      "tab.active_background": "#1e1e2e",
+      "status_bar.background": "#11111b",
+    },
+  },
+
+  "// ── WINDOW ──────────────────────────────────────────────────────────": "",
+  "window_decorations": "server",
+
+  "// ── VIM ─────────────────────────────────────────────────────────────": "",
+  "vim_mode": true,
+  "base_keymap": "VSCode",
+
+  "// ── EDITOR ──────────────────────────────────────────────────────────": "",
+  "buffer_font_family": "JetBrainsMono Nerd Font",
+  "buffer_font_size": 14,
+  "buffer_font_weight": 400,
+  "buffer_font_features": {
+    "liga": true,
+    "calt": true,
+    "cv01": true,
+    "cv02": true,
+    "cv15": true,
+    "cv19": true,
+    "cv23": true,
+    "cv29": true,
+    "cv31": true,
+    "ss01": true,
+    "ss03": true,
+    "ss05": true,
+  },
+  "ui_font_family": "JetBrainsMono Nerd Font",
+  "ui_font_size": 13,
+
+  "buffer_line_height": { "custom": 2.25 },
+  "current_line_highlight": "gutter",
+  "cursor_blink": false,
+  "cursor_shape": "bar",
+  "relative_line_numbers": "enabled",
+  "scroll_beyond_last_line": "off",
+  "scrollbar": { "show": "never" },
+  "horizontal_scroll_margin": 10.0,
+  "vertical_scroll_margin": 8.0,
+  "hard_tabs": false,
+  "tab_size": 2,
+
+  "// ── COMPLETIONS & HOVER ────────────────────────────────────────────": "",
+  "show_completions_on_input": true,
+  "hover_popover_enabled": false,
+  "auto_signature_help": true,
+  "use_autoclose": true,
+
+  "// ── INDENT GUIDES (subtle) ─────────────────────────────────────────": "",
+  "indent_guides": {
+    "enabled": false,
+    "coloring": "fixed",
+    "background_coloring": "disabled",
+    "line_width": 1,
+    "active_line_width": 2,
+  },
+
+  "// ── GIT GUTTER ──────────────────────────────────────────────────────": "",
+  "git": {
+    "git_gutter": "tracked_files",
+    "inline_blame": {
+      "enabled": false,
+    },
+  },
+
+  "// ── UI: STRIP EVERYTHING ───────────────────────────────────────────": "",
+  "tab_bar": { "show": false },
+  "toolbar": {
+    "quick_actions": false,
+    "breadcrumbs": false,
+  },
+  "title_bar": {
+    "show_branch_status_icon": false,
+    "show_branch_name": false,
+    "show_worktree_name": false,
+    "show_project_items": false,
+    "show_onboarding_banner": false,
+    "show_user_picture": false,
+    "show_user_menu": false,
+    "show_sign_in": false,
+    "show_menus": false,
+  },
+  "status_bar": {
+    "cursor_position_button": false,
+    "active_language_button": false,
+    "experimental.show": false,
+  },
+  "gutter": {
+    "min_line_number_digits": 0,
+    "line_numbers": true,
+    "runnables": false,
+    "folds": false,
+  },
+  "inline_code_actions": false,
+  "show_edit_predictions": false,
+
+  "// ── PANELS: OFF BY DEFAULT ─────────────────────────────────────────": "",
+  "git_panel": { "dock": "left" },
+  "project_panel": {
+    "dock": "left",
+    "starts_open": false,
+    "auto_open": { "on_paste": false },
+    "auto_fold_dirs": true,
+    "entry_spacing": "comfortable",
+    "hide_gitignore": true,
+    "button": false,
+    "hide_root": true,
+    "git_status": true,
+    "indent_guides": { "show": "never" },
+  },
+  "outline_panel": { "dock": "left", "button": false },
+  "collaboration_panel": { "dock": "left", "button": false },
+  "agent": {
+    "dock": "right",
+    "expand_edit_card": false,
+    "expand_terminal_card": false,
+    "single_file_review": false,
+    "enable_feedback": false,
+    "button": false,
+  },
+  "diagnostics": { "button": false },
+
+  "// ── SEARCH ──────────────────────────────────────────────────────────": "",
+  "search": { "button": false, "center_on_match": true },
+  "use_smartcase_search": true,
+  "file_finder": { "modal_max_width": "xlarge", "include_ignored": "smart" },
+
+  "// ── TERMINAL ────────────────────────────────────────────────────────": "",
+  "terminal": {
+    "blinking": "off",
+    "cursor_shape": "bar",
+    "button": false,
+    "font_family": "JetBrainsMono Nerd Font",
+    "font_size": 13,
+    "line_height": { "custom": 1.4 },
+    "detect_venv": {
+      "on": {
+        "directories": [".env", "env", ".venv", "venv", ".python-version"],
+      },
+    },
+  },
+
+  "// ── AUTOSAVE ────────────────────────────────────────────────────────": "",
+  "autosave": { "after_delay": { "milliseconds": 500 } },
+  "format_on_save": "on",
+  "close_on_file_delete": true,
+  "when_closing_with_no_tabs": "close_window",
+
+  "// ── FORMATTING & LINTING ───────────────────────────────────────────": "",
+  "prettier": { "allowed": true },
+  "code_actions_on_format": {
+    "source.fixAll.eslint": true,
+    "source.organizeImports": true,
+  },
+
+  "// ── SESSION & MISC ─────────────────────────────────────────────────": "",
+  "session": { "trust_all_worktrees": true },
+  "debugger": { "save_breakpoints": false },
+  "tasks": { "enabled": true },
+  "drag_and_drop_selection": { "enabled": false },
+
+  "// ── LANGUAGE SERVERS & LANGUAGE CONFIG ──────────────────────────────": "",
+  "languages": {
+    "C++": {
+      "language_servers": ["clangd"],
+      "formatter": {
+        "external": {
+          "command": "clang-format",
+          "arguments": [
+            "--style={ColumnLimit: 100, IndentWidth: 4, UseTab: Never, BreakBeforeBraces: Attach, AllowShortFunctionsOnASingleLine: Inline}",
+          ],
+        },
+      },
+      "tab_size": 4,
+    },
+    "C": {
+      "language_servers": ["clangd"],
+      "formatter": {
+        "external": {
+          "command": "clang-format",
+          "arguments": [
+            "--style={ColumnLimit: 100, IndentWidth: 4, UseTab: Never}",
+          ],
+        },
+      },
+      "tab_size": 4,
+    },
+    "JavaScript": {
+      "language_servers": ["vtsls"],
+      "tab_size": 2,
+      "formatter": {
+        "external": {
+          "command": "prettier",
+          "arguments": ["--single-quote", "--trailing-comma", "all"],
+        },
+      },
+    },
+    "TypeScript": {
+      "language_servers": ["vtsls"],
+      "tab_size": 2,
+      "formatter": {
+        "external": {
+          "command": "prettier",
+          "arguments": ["--single-quote", "--trailing-comma", "all"],
+        },
+      },
+    },
+    "TSX": { "language_servers": ["vtsls"], "tab_size": 2 },
+    "Python": {
+      "language_servers": ["pyright", "ruff"],
+      "tab_size": 4,
+      "formatter": {
+        "external": {
+          "command": "ruff",
+          "arguments": ["format", "--line-length", "100", "-"],
+        },
+      },
+    },
+    "Rust": {
+      "language_servers": ["rust-analyzer"],
+      "tab_size": 4,
+      "formatter": { "external": { "command": "rustfmt" } },
+    },
+    "Markdown": { "tab_size": 2 },
+    "JSON": { "tab_size": 2 },
+    "TOML": { "tab_size": 2 },
+    "YAML": { "tab_size": 2 },
+  },
+
+  "lsp": {
+    "vtsls": {
+      "settings": {
+        "typescript": {
+          "updateImportsOnFileMove": { "enabled": "always" },
+          "suggest": { "autoImports": true, "useCompletePlugin": true },
+        },
+        "javascript": {
+          "updateImportsOnFileMove": { "enabled": "always" },
+        },
+      },
+      "enable_lsp_tasks": true,
+    },
+    "pyright": {
+      "settings": {
+        "python.analysis": {
+          "typeCheckingMode": "on",
+          "autoSearchPaths": true,
+          "useLibraryCodeForTypes": true,
+          "diagnosticSeverityOverrides": {
+            "reportUnusedImport": "warning",
+            "reportMissingTypeStubs": "none",
+          },
+        },
+      },
+    },
+    "rust-analyzer": {
+      "settings": {
+        "checkOnSave": { "command": "clippy" },
+        "inlayHints": {
+          "typeHints": { "enable": true },
+          "chainingHints": { "enable": true },
+          "parameterHints": { "enable": true },
+        },
+      },
+    },
+    "clangd": {
+      "settings": {
+        "clangd.arguments": [
+          "--background-index",
+          "--clang-tidy",
+          "--completion-style=detailed",
+          "--header-insertion=iwyu",
+          "--malloc-trim",
+          "--pch-storage=memory",
+        ],
+      },
+    },
+  },
+  "windows": {
+    "window_decorations": "server",
+  },
+}

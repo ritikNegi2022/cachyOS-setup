@@ -54,8 +54,44 @@ $SUDO pacman -S --noconfirm --needed \
 # ---------------------------------------------------------------------------
 # 3. AUR packages — dwm + dmenu
 # ---------------------------------------------------------------------------
-log "Installing AUR packages (dwm, dmenu)..."
+log "Installing AUR packages (dwm only, no dmenu)..."
 
-yay -S --noconfirm --needed dwm dmenu
+yay -S --noconfirm --needed dwm
 
 log "All packages installed."
+
+# ---------------------------------------------------------------------------
+# 4. Python tools via pip
+# ---------------------------------------------------------------------------
+log "Installing Python tools via pip..."
+
+$SUDO pip install --break-system-packages \
+    black ruff mypy pytest pytest-cov flake8 isort \
+    2>/dev/null || warn "Some Python pip packages may have failed."
+
+log "Python tools installed."
+
+# ---------------------------------------------------------------------------
+# 5. Node.js global packages
+# ---------------------------------------------------------------------------
+log "Installing Node.js global packages..."
+
+npm install -g \
+    typescript ts-node tsx prettier eslint \
+    2>/dev/null || warn "Some npm packages may have failed."
+
+log "Node.js global packages installed."
+
+# ---------------------------------------------------------------------------
+# 6. Rust tools via cargo
+# ---------------------------------------------------------------------------
+log "Installing Rust tools via cargo..."
+
+if command -v cargo >/dev/null 2>&1; then
+    cargo install \
+        cargo-udeps cargo-expand cargo-edit cargo-watch \
+        2>/dev/null || warn "Some cargo packages may have failed."
+    log "Rust tools installed."
+else
+    warn "cargo not found — Rust tools skipped."
+fi
