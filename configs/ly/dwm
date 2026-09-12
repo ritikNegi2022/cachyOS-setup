@@ -1,0 +1,13 @@
+#!/bin/sh
+# Ly session: dwm
+# This runs when user selects "dwm" at ly login screen.
+# Based on /etc/X11/xinit/xinitrc but minimal.
+
+# Start touchegg for trackpad gestures
+touchegg &
+
+# Give touchegg a moment
+sleep 0.5
+
+# Start dwm
+exec dwm

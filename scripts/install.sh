@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install yay (AUR helper) + all required packages
+# Install yay (AUR helper) + all packages
 # Part of cachyOS-setup — see setup.sh
 
 set -euo pipefail
@@ -38,7 +38,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Official repo packages — X11 + dwm dependencies + tools
+# 2. Official repo packages
 # ---------------------------------------------------------------------------
 log "Installing official repo packages..."
 
@@ -49,10 +49,10 @@ $SUDO pacman -S --noconfirm --needed \
     alacritty tmux neovim lf lazygit \
     btop fastfetch man git \
     ripgrep fd fzf tree bat eza \
-    firefox
+    firefox ly
 
 # ---------------------------------------------------------------------------
-# 3. AUR packages — dwm + dmenu (dwm is on AUR)
+# 3. AUR packages — dwm + dmenu
 # ---------------------------------------------------------------------------
 log "Installing AUR packages (dwm, dmenu)..."
 
