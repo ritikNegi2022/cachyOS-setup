@@ -1,0 +1,74 @@
+#!/bin/sh
+# remind — manage notification reminders for the dwm reminder daemon
+# File format: HH:MM | daily|once | message
+
+REM_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dwm/reminders.txt"
+
+usage() {
+    cat << EOF
+Usage: remind <command> [args]
+
+Commands:
+    add HH:MM message...    daily repeating reminder (e.g. break time)
+    once HH:MM message...   fires once at the next HH:MM, then removes itself
+    list                    show reminders (numbers usable with del)
+    del N                   remove reminder number N (from 'remind list')
+
+Examples:
+    remind add 15:00 Take a break - stretch and drink water
+    remind once 18:30 Call the dentist
+    remind list
+    remind del 2
+EOF
+}
+
+valid_time() {
+    echo "$1" | grep -qE '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+}
+
+case "${1:-}" in
+    add)
+        [ -n "${2:-}" ] && valid_time "$2" || { usage; exit 1; }
+        t=$2
+        shift 2
+        [ $# -gt 0 ] || { usage; exit 1; }
+        mkdir -p "$(dirname "$REM_FILE")"
+        printf '%s | daily | %s\n' "$t" "$*" >> "$REM_FILE"
+        echo "added daily reminder: $t -> $*"
+        ;;
+    once)
+        [ -n "${2:-}" ] && valid_time "$2" || { usage; exit 1; }
+        t=$2
+        shift 2
+        [ $# -gt 0 ] || { usage; exit 1; }
+        mkdir -p "$(dirname "$REM_FILE")"
+        printf '%s | once | %s\n' "$t" "$*" >> "$REM_FILE"
+        echo "added one-shot reminder: $t -> $*"
+        ;;
+    list)
+        if [ ! -s "$REM_FILE" ]; then
+            echo "no reminders"
+            exit 0
+        fi
+        n=0
+        while IFS= read -r line; do
+            n=$((n + 1))
+            echo "$n. $line"
+        done < "$REM_FILE"
+        ;;
+    del)
+        [ -n "${2:-}" ] || { usage; exit 1; }
+        [ -s "$REM_FILE" ] || { echo "no reminders"; exit 1; }
+        total=$(wc -l < "$REM_FILE")
+        if ! [ "$2" -ge 1 ] 2>/dev/null || ! [ "$2" -le "$total" ] 2>/dev/null; then
+            echo "invalid number: $2 (have $total reminders)"
+            exit 1
+        fi
+        sed -i "${2}d" "$REM_FILE"
+        echo "removed reminder $2"
+        ;;
+    help|--help|-h|*)
+        usage
+        [ $# -gt 0 ] && [ "$1" != "help" ] && [ "$1" != "--help" ] && [ "$1" != "-h" ] && exit 1
+        ;;
+esac

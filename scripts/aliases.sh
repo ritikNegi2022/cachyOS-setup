@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+GREEN='\033[0;32m'
+NC='\033[0m'
+
 log()  { echo -e "${GREEN}[ok]${NC}  $*"; }
 
 SHELL_RC=""
@@ -68,6 +71,16 @@ serve() {
     local port="${1:-8080}"
     python -m http.server "$port" 2>/dev/null || php -S localhost:"$port" 2>/dev/null || node -e "require('http').createServer((_,r)=>r.end('OK')).listen($port)" &
     echo "Server running on http://localhost:$port"
+}
+
+# Audio volume via wpctl (wireplumber; no pavucontrol needed)
+vol() {
+    case "${1:-}" in
+        up)   wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+ ;;
+        down) wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ;;
+        mute) wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+        *)    wpctl get-volume @DEFAULT_AUDIO_SINK@ ;;
+    esac
 }
 ALIASES
 

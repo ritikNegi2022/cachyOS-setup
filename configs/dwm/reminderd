@@ -1,0 +1,61 @@
+#!/bin/sh
+# Reminder daemon (installed to /etc/ly/reminderd, started by dwm-session)
+# 1. Hourly time notification at :00 (9:00, 10:00, 11:00, ...)
+# 2. Fires user reminders from ~/.config/dwm/reminders.txt
+#    Format:  HH:MM | daily|once | message
+#      daily : fires every day at HH:MM
+#      once  : fires at the next HH:MM match, then removes itself
+# Notifications go through dunst (already running in the session).
+
+REM_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dwm"
+REM_FILE="$REM_DIR/reminders.txt"
+mkdir -p "$REM_DIR"
+touch "$REM_FILE"
+
+notify() {
+    # notify <title> <message>
+    command -v notify-send >/dev/null 2>&1 && notify-send -t 8000 "$1" "$2"
+}
+
+last_hour=""
+
+while :; do
+    now=$(date +"%H:%M")
+    hour=$(date +"%H")
+
+    # --- hourly time notification (only once per clock hour) ---
+    if [ "$hour" != "$last_hour" ]; then
+        last_hour="$hour"
+        # skip the first loop iteration right after login (mid-hour start)
+        if [ "$_skip_first" = "1" ]; then
+            notify "$now" "Time check"
+        fi
+        _skip_first=1
+    fi
+
+    # --- user reminders ---
+    if [ -s "$REM_FILE" ]; then
+        n=0
+        tmp="$REM_FILE.tmp"
+        : > "$tmp"
+        while IFS= read -r line || [ -n "$line" ]; do
+            [ -z "$line" ] && continue
+            n=$((n + 1))
+            rtime=$(printf '%s' "$line" | cut -d'|' -f1 | tr -d ' ')
+            rtype=$(printf '%s' "$line" | cut -d'|' -f2 | tr -d ' ')
+            rmsg=$(printf '%s' "$line" | cut -d'|' -f3- | sed 's/^ *//')
+
+            if [ "$rtime" = "$now" ]; then
+                notify "Reminder ($rtime)" "$rmsg"
+                # 'once' reminders are not copied to the new file -> removed
+                [ "$rtype" = "daily" ] && printf '%s\n' "$line" >> "$tmp"
+            else
+                printf '%s\n' "$line" >> "$tmp"
+            fi
+        done < "$REM_FILE"
+        mv "$tmp" "$REM_FILE"
+    fi
+
+    # sleep until the next minute boundary (accurate, low CPU)
+    sleep "$((60 - $(date +%S)))"
+done

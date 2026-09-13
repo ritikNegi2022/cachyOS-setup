@@ -1,0 +1,27 @@
+#!/bin/sh
+# Ly session script: dwm
+# Referenced by configs/ly/dwm.desktop (Exec= line), installed to /etc/ly/dwm-session
+# Runs when the user selects "dwm" at the ly login screen.
+
+# Touchegg daemon — must run inside the user session for xdotool to work.
+# Arch's packaged /etc/xdg/autostart/touchegg.desktop does this too; the
+# pgrep guard avoids a second instance.
+pgrep -x touchegg >/dev/null 2>&1 || touchegg &
+
+# Pure black background — no wallpaper, no compositor needed
+xsetroot -solid "#000000"
+
+# Session key remaps: ESC<->CapsLock, Alt<->Ctrl (delete this line to revert)
+/etc/ly/keyswap.sh &
+
+# Notifications (dunst — started once per session)
+pgrep -x dunst >/dev/null 2>&1 || dunst &
+
+# Status bar (volume / brightness / battery / time → dwm's bar via xsetroot)
+/etc/ly/dwm-statusbar &
+
+# Reminder daemon: hourly time pings + user reminders (see `remind` CLI)
+/etc/ly/reminderd &
+
+# Start dwm (replaces this shell)
+exec dwm

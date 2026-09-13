@@ -1,6 +1,7 @@
 #!/bin/bash
-# Install yay (AUR helper) + all packages
-# Part of cachyOS-setup — see setup.sh
+# Install yay (AUR helper) + all packages — minimal TUI setup
+# GUI is limited to: Zed editor + two browsers (Brave + Zen). No compositor, no wallpaper.
+# Part of arch-setup — see setup.sh
 
 set -euo pipefail
 
@@ -26,50 +27,96 @@ if command -v yay >/dev/null 2>&1; then
     log "yay already installed: $(command -v yay)"
 else
     log "Installing yay (AUR helper)..."
+
     $SUDO pacman -S --noconfirm --needed base-devel git
-    cd /tmp
-    rm -rf yay
-    git clone https://aur.archlinux.org/yay.git
-    cd yay
-    makepkg -si --noconfirm
-    cd /tmp
-    rm -rf yay
-    log "yay installed: $(command -v yay)"
+
+    (
+        cd /tmp || exit 1
+        rm -rf yay
+        git clone https://aur.archlinux.org/yay.git || {
+            warn "Failed to clone yay - check internet connection"
+            exit 1
+        }
+        cd yay || exit 1
+        makepkg -si --noconfirm || {
+            warn "yay build failed"
+            exit 1
+        }
+    )
+
+    if command -v yay >/dev/null 2>&1; then
+        log "yay installed: $(command -v yay)"
+    else
+        err "yay installation failed"
+        exit 1
+    fi
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Official repo packages
+# 2. Official repo packages (all names verified against Arch repos)
 # ---------------------------------------------------------------------------
 log "Installing official repo packages..."
 
 $SUDO pacman -S --noconfirm --needed \
-    xorg-server xorg-xinit xorg-xprop \
+    xorg-server xorg-xinit xorg-xprop xorg-xauth \
+    xorg-xsetroot xorg-xrandr xorg-xinput xorg-xmodmap \
     xdotool wmctrl libinput touchegg \
-    xclip xauth xterm \
+    xclip xterm file \
     alacritty tmux neovim lf lazygit \
-    btop fastfetch man git \
+    btop fastfetch man-db git \
     ripgrep fd fzf tree bat eza \
-    firefox ly
+    ly zed \
+    dunst \
+    zathura zathura-pdf-mupdf \
+    brightnessctl playerctl \
+    maim slop xdg-utils libnotify slock bc \
+    clang rust-analyzer typescript-language-server lua-language-server \
+    neovim-lspconfig \
+    nodejs npm \
+    rust uv watchexec \
+    python python-pip python-ruff \
+    python-pytest python-pytest-cov \
+    pyright
+
+log "Official repo packages installed."
 
 # ---------------------------------------------------------------------------
-# 3. AUR packages — dwm + dmenu
+# 3. AUR packages
 # ---------------------------------------------------------------------------
-log "Installing AUR packages (dwm only, no dmenu)..."
+log "Installing AUR packages..."
 
-yay -S --noconfirm --needed dwm
+# NOTE: dwm is installed by scripts/dwm-build.sh (with our config.h injected).
+# Browsers: brave-bin (chromium-based) + zen-browser-bin (firefox-based).
+# Browsers are hard requirements — fail loudly if they can't install.
+yay -S --noconfirm --needed \
+    brave-bin \
+    zen-browser-bin || {
+    err "Browser (brave-bin / zen-browser-bin) installation failed"
+    exit 1
+}
 
-log "All packages installed."
+# pgadmin4-desktop is the standalone desktop binary — no web stack.
+# It is a long, flaky AUR build (rust+node); failing here must NOT abort the
+# whole setup — scripts/pgadmin-setup.sh runs later and retries it.
+if ! yay -S --noconfirm --needed pgadmin4-desktop; then
+    warn "pgadmin4-desktop AUR build failed — will be retried by scripts/pgadmin-setup.sh"
+fi
+
+log "AUR packages installed."
 
 # ---------------------------------------------------------------------------
-# 4. Python tools via pip
+# 4. Python extras via pip (repo packages cover ruff/pytest; pip adds mypy)
 # ---------------------------------------------------------------------------
-log "Installing Python tools via pip..."
+log "Installing Python extras via pip (--user)..."
 
-$SUDO pip install --break-system-packages \
-    black ruff mypy pytest pytest-cov flake8 isort \
-    2>/dev/null || warn "Some Python pip packages may have failed."
-
-log "Python tools installed."
+if command -v pip >/dev/null 2>&1; then
+    pip install --user --break-system-packages \
+        mypy \
+        2>/dev/null || warn "pip install failed — mypy unavailable (skip or use pyright)."
+    log "Python pip extras installed."
+else
+    warn "pip not found — skipping pip extras."
+fi
 
 # ---------------------------------------------------------------------------
 # 5. Node.js global packages
@@ -77,21 +124,9 @@ log "Python tools installed."
 log "Installing Node.js global packages..."
 
 npm install -g \
-    typescript ts-node tsx prettier eslint \
+    typescript tsx prettier eslint \
     2>/dev/null || warn "Some npm packages may have failed."
 
 log "Node.js global packages installed."
 
-# ---------------------------------------------------------------------------
-# 6. Rust tools via cargo
-# ---------------------------------------------------------------------------
-log "Installing Rust tools via cargo..."
-
-if command -v cargo >/dev/null 2>&1; then
-    cargo install \
-        cargo-udeps cargo-expand cargo-edit cargo-watch \
-        2>/dev/null || warn "Some cargo packages may have failed."
-    log "Rust tools installed."
-else
-    warn "cargo not found — Rust tools skipped."
-fi
+log "install.sh complete."

@@ -1,19 +1,35 @@
-set editor nvim
-set previewer $PWD/preview.sh
-set previewsize 500
-set colorscheme default
-set hidden false
-set sortby mtime
-set icons true
-set numbers left
+# lf config — minimal, vim-style
+# Docs: lf -doc  (built-in, always matches your lf version)
 
-bind q kill
-bind E set hidden!
-bind H cd ..
-bind L accept
-bind / regex
-bind ? filter
-bind n sortby name
-bind m sortby mtime
-bind s set sortby size
-bind I set icons!
+# --- options (all verified against lf docs) ---
+set shell sh
+set shellflag -c
+set shellopts "-eu"
+set ifs "\n"
+set preview true
+set previewer ~/.config/lf/preview.sh
+set drawbox false
+set hidden true
+set sortby mtime
+set info size,mtime
+set ratios 1:2:3
+set scrolloff 5
+set cursorpreviewfmt "\033[7;2m"
+
+# Open files in $EDITOR (text) or the system opener (everything else)
+cmd open &{{
+    set -f
+    case $(file --mime-type -Lb "$f") in
+        text/*|application/json|application/xml) lf -remote "send $id \$\$EDITOR \$fx" ;;
+        *) for f in $fx; do xdg-open "$f" > /dev/null 2> /dev/null & done ;;
+    esac
+}}
+
+# Hidden files toggle (E key; lf's built-in zh also works)
+map E set hidden!
+
+# Sort toggles (option is `sortby`, set with plain `set`)
+map sn :set sortby natural; set info
+map sm :set sortby mtime; set info size,mtime
+map ss :set sortby size; set info size,mtime
+map se :set sortby ext; set info

@@ -1,6 +1,4 @@
 {
-  "// ── THEME & APPEARANCE ──────────────────────────────────────────────": "",
-  "cli_default_open_behavior": "new_window",
   "theme": "One Dark",
   "theme_overrides": {
     "One Dark": {
@@ -17,18 +15,14 @@
       "tab_bar.background": "#11111b",
       "tab.inactive_background": "#11111b",
       "tab.active_background": "#1e1e2e",
-      "status_bar.background": "#11111b",
-    },
+      "status_bar.background": "#11111b"
+    }
   },
 
-  "// ── WINDOW ──────────────────────────────────────────────────────────": "",
   "window_decorations": "server",
-
-  "// ── VIM ─────────────────────────────────────────────────────────────": "",
   "vim_mode": true,
   "base_keymap": "VSCode",
 
-  "// ── EDITOR ──────────────────────────────────────────────────────────": "",
   "buffer_font_family": "JetBrainsMono Nerd Font",
   "buffer_font_size": 14,
   "buffer_font_weight": 400,
@@ -44,7 +38,7 @@
     "cv31": true,
     "ss01": true,
     "ss03": true,
-    "ss05": true,
+    "ss05": true
   },
   "ui_font_family": "JetBrainsMono Nerd Font",
   "ui_font_size": 13,
@@ -61,34 +55,28 @@
   "hard_tabs": false,
   "tab_size": 2,
 
-  "// ── COMPLETIONS & HOVER ────────────────────────────────────────────": "",
   "show_completions_on_input": true,
   "hover_popover_enabled": false,
   "auto_signature_help": true,
   "use_autoclose": true,
 
-  "// ── INDENT GUIDES (subtle) ─────────────────────────────────────────": "",
   "indent_guides": {
     "enabled": false,
     "coloring": "fixed",
     "background_coloring": "disabled",
     "line_width": 1,
-    "active_line_width": 2,
+    "active_line_width": 2
   },
 
-  "// ── GIT GUTTER ──────────────────────────────────────────────────────": "",
   "git": {
     "git_gutter": "tracked_files",
-    "inline_blame": {
-      "enabled": false,
-    },
+    "inline_blame": { "enabled": false }
   },
 
-  "// ── UI: STRIP EVERYTHING ───────────────────────────────────────────": "",
   "tab_bar": { "show": false },
   "toolbar": {
     "quick_actions": false,
-    "breadcrumbs": false,
+    "breadcrumbs": false
   },
   "title_bar": {
     "show_branch_status_icon": false,
@@ -99,23 +87,22 @@
     "show_user_picture": false,
     "show_user_menu": false,
     "show_sign_in": false,
-    "show_menus": false,
+    "show_menus": false
   },
   "status_bar": {
     "cursor_position_button": false,
     "active_language_button": false,
-    "experimental.show": false,
+    "experimental.show": false
   },
   "gutter": {
     "min_line_number_digits": 0,
     "line_numbers": true,
     "runnables": false,
-    "folds": false,
+    "folds": false
   },
   "inline_code_actions": false,
   "show_edit_predictions": false,
 
-  "// ── PANELS: OFF BY DEFAULT ─────────────────────────────────────────": "",
   "git_panel": { "dock": "left" },
   "project_panel": {
     "dock": "left",
@@ -127,7 +114,7 @@
     "button": false,
     "hide_root": true,
     "git_status": true,
-    "indent_guides": { "show": "never" },
+    "indent_guides": { "show": "never" }
   },
   "outline_panel": { "dock": "left", "button": false },
   "collaboration_panel": { "dock": "left", "button": false },
@@ -137,16 +124,14 @@
     "expand_terminal_card": false,
     "single_file_review": false,
     "enable_feedback": false,
-    "button": false,
+    "button": false
   },
   "diagnostics": { "button": false },
 
-  "// ── SEARCH ──────────────────────────────────────────────────────────": "",
   "search": { "button": false, "center_on_match": true },
   "use_smartcase_search": true,
   "file_finder": { "modal_max_width": "xlarge", "include_ignored": "smart" },
 
-  "// ── TERMINAL ────────────────────────────────────────────────────────": "",
   "terminal": {
     "blinking": "off",
     "cursor_shape": "bar",
@@ -156,31 +141,27 @@
     "line_height": { "custom": 1.4 },
     "detect_venv": {
       "on": {
-        "directories": [".env", "env", ".venv", "venv", ".python-version"],
-      },
-    },
+        "directories": [".env", "env", ".venv", "venv", ".python-version"]
+      }
+    }
   },
 
-  "// ── AUTOSAVE ────────────────────────────────────────────────────────": "",
   "autosave": { "after_delay": { "milliseconds": 500 } },
   "format_on_save": "on",
   "close_on_file_delete": true,
   "when_closing_with_no_tabs": "close_window",
 
-  "// ── FORMATTING & LINTING ───────────────────────────────────────────": "",
   "prettier": { "allowed": true },
   "code_actions_on_format": {
     "source.fixAll.eslint": true,
-    "source.organizeImports": true,
+    "source.organizeImports": true
   },
 
-  "// ── SESSION & MISC ─────────────────────────────────────────────────": "",
   "session": { "trust_all_worktrees": true },
   "debugger": { "save_breakpoints": false },
   "tasks": { "enabled": true },
   "drag_and_drop_selection": { "enabled": false },
 
-  "// ── LANGUAGE SERVERS & LANGUAGE CONFIG ──────────────────────────────": "",
   "languages": {
     "C++": {
       "language_servers": ["clangd"],
@@ -188,11 +169,11 @@
         "external": {
           "command": "clang-format",
           "arguments": [
-            "--style={ColumnLimit: 100, IndentWidth: 4, UseTab: Never, BreakBeforeBraces: Attach, AllowShortFunctionsOnASingleLine: Inline}",
-          ],
-        },
+            "--style={ColumnLimit: 100, IndentWidth: 4, UseTab: Never, BreakBeforeBraces: Attach, AllowShortFunctionsOnASingleLine: Inline}"
+          ]
+        }
       },
-      "tab_size": 4,
+      "tab_size": 4
     },
     "C": {
       "language_servers": ["clangd"],
@@ -200,11 +181,11 @@
         "external": {
           "command": "clang-format",
           "arguments": [
-            "--style={ColumnLimit: 100, IndentWidth: 4, UseTab: Never}",
-          ],
-        },
+            "--style={ColumnLimit: 100, IndentWidth: 4, UseTab: Never}"
+          ]
+        }
       },
-      "tab_size": 4,
+      "tab_size": 4
     },
     "JavaScript": {
       "language_servers": ["vtsls"],
@@ -212,9 +193,9 @@
       "formatter": {
         "external": {
           "command": "prettier",
-          "arguments": ["--single-quote", "--trailing-comma", "all"],
-        },
-      },
+          "arguments": ["--single-quote", "--trailing-comma", "all"]
+        }
+      }
     },
     "TypeScript": {
       "language_servers": ["vtsls"],
@@ -222,9 +203,9 @@
       "formatter": {
         "external": {
           "command": "prettier",
-          "arguments": ["--single-quote", "--trailing-comma", "all"],
-        },
-      },
+          "arguments": ["--single-quote", "--trailing-comma", "all"]
+        }
+      }
     },
     "TSX": { "language_servers": ["vtsls"], "tab_size": 2 },
     "Python": {
@@ -233,19 +214,19 @@
       "formatter": {
         "external": {
           "command": "ruff",
-          "arguments": ["format", "--line-length", "100", "-"],
-        },
-      },
+          "arguments": ["format", "--line-length", "100", "-"]
+        }
+      }
     },
     "Rust": {
       "language_servers": ["rust-analyzer"],
       "tab_size": 4,
-      "formatter": { "external": { "command": "rustfmt" } },
+      "formatter": { "external": { "command": "rustfmt" } }
     },
     "Markdown": { "tab_size": 2 },
     "JSON": { "tab_size": 2 },
     "TOML": { "tab_size": 2 },
-    "YAML": { "tab_size": 2 },
+    "YAML": { "tab_size": 2 }
   },
 
   "lsp": {
@@ -253,13 +234,13 @@
       "settings": {
         "typescript": {
           "updateImportsOnFileMove": { "enabled": "always" },
-          "suggest": { "autoImports": true, "useCompletePlugin": true },
+          "suggest": { "autoImports": true, "useCompletePlugin": true }
         },
         "javascript": {
-          "updateImportsOnFileMove": { "enabled": "always" },
-        },
+          "updateImportsOnFileMove": { "enabled": "always" }
+        }
       },
-      "enable_lsp_tasks": true,
+      "enable_lsp_tasks": true
     },
     "pyright": {
       "settings": {
@@ -269,10 +250,10 @@
           "useLibraryCodeForTypes": true,
           "diagnosticSeverityOverrides": {
             "reportUnusedImport": "warning",
-            "reportMissingTypeStubs": "none",
-          },
-        },
-      },
+            "reportMissingTypeStubs": "none"
+          }
+        }
+      }
     },
     "rust-analyzer": {
       "settings": {
@@ -280,9 +261,9 @@
         "inlayHints": {
           "typeHints": { "enable": true },
           "chainingHints": { "enable": true },
-          "parameterHints": { "enable": true },
-        },
-      },
+          "parameterHints": { "enable": true }
+        }
+      }
     },
     "clangd": {
       "settings": {
@@ -292,12 +273,9 @@
           "--completion-style=detailed",
           "--header-insertion=iwyu",
           "--malloc-trim",
-          "--pch-storage=memory",
-        ],
-      },
-    },
-  },
-  "windows": {
-    "window_decorations": "server",
-  },
+          "--pch-storage=memory"
+        ]
+      }
+    }
+  }
 }

@@ -1,29 +1,30 @@
+# Alacritty config — validated against alacritty 0.17 schema
+# https://alacritty.org/config-alacritty.html
+
+[general]
+import = []
+
 [window]
 padding = { x = 8, y = 8 }
-decorations = "full"
-opacity = 0.95
+decorations = "Full"        # values: "Full" | "None" | "Transparent" | "Buttonless"
 
 [font]
-normal = { family = "JetBrains Mono", style = "Regular" }
-bold = { family = "JetBrains Mono", style = "Bold" }
-italic = { family = "JetBrains Mono", style = "Italic" }
+normal = { family = "JetBrainsMono Nerd Font", style = "Regular" }
+bold = { family = "JetBrainsMono Nerd Font", style = "Bold" }
+italic = { family = "JetBrainsMono Nerd Font", style = "Italic" }
 size = 12.0
 
-[keys]
-[[keys.bindings]]
-key = "V"
-mods = "CTRL|SHIFT"
-action = "Paste"
+# Pure black, fully opaque — no compositor needed
+[colors.primary]
+background = "#000000"
+foreground = "#eeeeee"
 
-[[keys.bindings]]
-key = "C"
-mods = "CTRL|SHIFT"
-action = "Copy"
-
-[[keys.bindings]]
-key = "Q"
-mods = "ALT"
-action = { Send = [{ Copy = "Selection" }, { Paste = None }, { Close = None }] }
+# NOTE: [keyboard] is the correct table (pre-0.13 used [keys])
+[keyboard]
+bindings = [
+  { key = "V", mods = "Control|Shift", action = "Paste" },
+  { key = "C", mods = "Control|Shift", action = "Copy" },
+]
 
 [selection]
 save_to_clipboard = true
@@ -31,8 +32,3 @@ save_to_clipboard = true
 [cursor]
 style = { shape = "Block", blinking = "On" }
 blink_interval = 750
-
-[terminal]
-linkifiers = [
-  { indices = [2, 3], family = "Hyperlink", style = "Underline|Italic" },
-]

@@ -1,57 +1,88 @@
--- Minimal neovim — fast startup, LSP built-in, no plugins
+-- Minimal neovim — fast startup, LSP, no plugin manager
+-- Works on nvim 0.11+ (uses native vim.lsp.config); lspconfig used only if installed
+
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
-vim.opt.number = true
-vim.opt.relativenumber = true
-vim.opt.signcolumn = "yes"
+-- Only set colorscheme if it actually exists (avoids E185 on startup)
+pcall(vim.cmd.colorscheme, "habamax")
 
-vim.opt.tabstop = 4
-vim.opt.shiftwidth = 4
-vim.opt.expandtab = true
-vim.opt.autoindent = true
-vim.opt.smartindent = true
+local opt = vim.opt
+opt.number = true
+opt.relativenumber = true
+opt.signcolumn = "yes"
 
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
-vim.opt.hlsearch = false
-vim.opt.incsearch = true
+opt.tabstop = 4
+opt.shiftwidth = 4
+opt.expandtab = true
+opt.autoindent = true
+opt.smartindent = true
 
-vim.opt.cursorline = true
-vim.opt.scrolloff = 8
-vim.opt.iskeyword:append("-")
+opt.ignorecase = true
+opt.smartcase = true
+opt.hlsearch = false
+opt.incsearch = true
 
-vim.opt.backspace = "indent,eol,start"
-vim.opt.clipboard = "unnamedplus"
-vim.opt.splitright = true
-vim.opt.splitbelow = true
+opt.cursorline = true
+opt.scrolloff = 8
+opt.iskeyword:append("-")
 
-vim.opt.swapfile = false
-vim.opt.backup = false
-vim.opt.undofile = true
+opt.backspace = "indent,eol,start"
+opt.clipboard = "unnamedplus"
+opt.splitright = true
+opt.splitbelow = true
 
-vim.cmd.colorscheme("habanight")
+opt.swapfile = false
+opt.backup = false
+opt.undofile = true
 
 local keymap = vim.keymap.set
 keymap("n", "<leader>e", ":Ex<CR>", { desc = "File explorer" })
-keymap("n", "<leader>ff", ":Rg<CR>", { desc = "Search" })
 keymap("n", "<leader>w", ":w<CR>", { desc = "Save" })
 keymap("n", "<leader>q", ":q<CR>", { desc = "Quit" })
-keymap("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move down" })
-keymap("v", "K", ":m '<-2<CR>gv=gv", { desc = "Move up" })
+keymap("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move selection down" })
+keymap("v", "K", ":m '<-2<CR>gv=gv", { desc = "Move selection up" })
 keymap("n", "<leader>sv", ":vsp<CR>", { desc = "Vertical split" })
 keymap("n", "<leader>sh", ":sp<CR>", { desc = "Horizontal split" })
 
--- LSP (built-in, no plugins)
-local lspconfig = require("lspconfig")
-lspconfig.lua_ls.setup({})
-lspconfig.ts_ls.setup({})
-lspconfig.html.setup({})
-lspconfig.css_ls.setup({})
-lspconfig.jsonls.setup({})
+-- Project-wide search via ripgrep (guarded: only if rg is installed)
+if vim.fn.executable("rg") == 1 then
+    keymap("n", "<leader>R", function()
+        local query = vim.fn.input("Rg: ")
+        if query ~= "" then
+            vim.cmd("grep! " .. vim.fn.shellescape(query))
+            vim.cmd("copen")
+        end
+    end, { desc = "Ripgrep search" })
+end
 
-vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to def" })
-vim.keymap.set("n", "gr", vim.lsp.buf.references, { desc = "Go to refs" })
-vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "Hover" })
-vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, { desc = "Rename" })
-vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, { desc = "Code action" })
+-- LSP: nvim-lspconfig (installed via pacman) provides server definitions;
+-- enable the ones whose binaries exist on this machine.
+local ok, lspconfig = pcall(require, "lspconfig")
+if ok then
+    local servers = {
+        pyright = "pyright",
+        ruff = "ruff",
+        rust_analyzer = "rust-analyzer",
+        clangd = "clangd",
+        lua_ls = "lua-language-server",
+        ts_ls = "typescript-language-server",
+    }
+    for ls, bin in pairs(servers) do
+        if vim.fn.executable(bin) == 1 then
+            pcall(function() vim.lsp.enable(ls) end)
+        end
+    end
+end
+
+vim.api.nvim_create_autocmd("LspAttach", {
+    callback = function(args)
+        local km = vim.keymap.set
+        local buf = args.buf
+        km("n", "gd", vim.lsp.buf.definition, { buffer = buf, desc = "Go to definition" })
+        km("n", "gr", vim.lsp.buf.references, { buffer = buf, desc = "Go to references" })
+        km("n", "K", vim.lsp.buf.hover, { buffer = buf, desc = "Hover" })
+        km("n", "<leader>rn", vim.lsp.buf.rename, { buffer = buf, desc = "Rename" })
+        km("n", "<leader>ca", vim.lsp.buf.code_action, { buffer = buf, desc = "Code action" })
+    end,
+})
