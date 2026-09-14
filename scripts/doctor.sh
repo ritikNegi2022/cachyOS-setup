@@ -30,6 +30,8 @@ have_bin()   { command -v "$1" >/dev/null 2>&1; }
 have_file()  { [ -f "$1" ]; }
 have_exec()  { [ -x "$1" ]; }
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 # --- 1. AUR helper + build tools --------------------------------------------
 section "1. AUR helper + build tools"
 if have_bin yay; then pass "yay installed ($(command -v yay))"; else fail "yay missing (AUR packages cannot install)"; fi
@@ -73,6 +75,20 @@ else
     warn "/etc/acpi/events/power missing or wrong (power button may shut down!)"
 fi
 
+# keypress-sound: user unit installed + enabled (autostarts at graphical login)
+UNIT_FILE="$HOME/.config/systemd/user/keypress-sound.service"
+if have_file "$UNIT_FILE"; then
+    pass "file: $UNIT_FILE"
+    if command -v systemctl >/dev/null 2>&1 \
+       && [ "$(systemctl --user is-enabled keypress-sound.service 2>/dev/null)" = "enabled" ]; then
+        pass "keypress-sound.service enabled (autostarts at graphical login)"
+    else
+        warn "keypress-sound.service not enabled (fix: systemctl --user enable keypress-sound.service)"
+    fi
+else
+    info "keypress-sound user unit not installed (copied by scripts/bin-copy.sh when the binary exists)"
+fi
+
 # --- 5. dwm binary (custom config embedded?) ---------------------------------
 section "5. dwm binary"
 DWM_BIN="$(command -v dwm 2>/dev/null || true)"
@@ -94,6 +110,21 @@ for f in $USER_FILES; do
     if have_file "$f"; then pass "file: $f"; else fail "file missing: $f (re-run setup.sh step 5)"; fi
 done
 if have_exec "$HOME/.config/lf/preview.sh"; then pass "lf preview.sh executable"; else fail "~/.config/lf/preview.sh not executable"; fi
+
+# Repo-shipped binaries (bin-copy.sh installs them from repo bin/)
+CKSUM_FILE="$REPO_ROOT/bin/checksums.sha256"
+for b in dsa keypress-sound; do
+    if have_exec "$HOME/.bin/$b"; then pass "~/.bin/$b installed (repo-shipped)"; else fail "~/.bin/$b missing (re-run scripts/bin-copy.sh)"; fi
+done
+# Integrity: installed binaries must match the repo manifest (catches corruption,
+# manual overwrites, or a stale binary after a repo update)
+if have_file "$CKSUM_FILE" && have_file "$HOME/.bin/dsa"; then
+    if (cd "$HOME/.bin" && sha256sum -c --quiet "$CKSUM_FILE" 2>/dev/null); then
+        pass "repo binaries match checksums (integrity OK)"
+    else
+        warn "installed binaries differ from repo checksums (re-run scripts/bin-copy.sh, or update bin/checksums.sha256 if you changed the binary)"
+    fi
+fi
 
 # JSON validity (zed) — Zed uses JSONC, so tolerate // and /* */ comments
 zed_json_ok() {
@@ -176,6 +207,13 @@ else
     if pgrep -x dwm >/dev/null 2>&1; then pass "dwm process running"; else fail "dwm is not running in this session"; fi
     if pgrep -x dunst >/dev/null 2>&1; then pass "dunst running"; else warn "dunst not running (no notifications)"; fi
     if pgrep -x touchegg >/dev/null 2>&1; then pass "touchegg running"; else warn "touchegg not running (gestures dead)"; fi
+    if [ -f "$HOME/.config/systemd/user/keypress-sound.service" ]; then
+        if systemctl --user is-active keypress-sound.service >/dev/null 2>&1; then
+            pass "keypress-sound.service running"
+        else
+            warn "keypress-sound.service not running (start: systemctl --user start keypress-sound.service)"
+        fi
+    fi
     if have_bin xprop; then
         rootname="$(xprop -root -notype WM_NAME 2>/dev/null | cut -d'"' -f2)"
         case "$rootname" in

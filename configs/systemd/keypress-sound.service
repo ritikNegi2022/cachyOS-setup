@@ -1,0 +1,25 @@
+# systemd USER service: keypress-sound (keyboard sound effects)
+# Installed to ~/.config/systemd/user/ by scripts/bin-copy.sh.
+#
+# Why a user service and not a system service: at boot (before the ly login)
+# there is no X session and no user audio server, so a boot-time system unit
+# would only fail. This unit is bound to graphical-session.target, which
+# configs/ly/dwm-session starts on every graphical login — the systemd-correct
+# way to get "runs automatically on every boot".
+#
+# Customize (args, profile, volume) by editing ExecStart, then:
+#   systemctl --user daemon-reload && systemctl --user restart keypress-sound
+# Logs: journalctl --user -u keypress-sound -e
+
+[Unit]
+Description=Keypress sound daemon (keyboard sound effects)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.bin/keypress-sound
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

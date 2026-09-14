@@ -126,6 +126,8 @@ Setup: ______________  Date: ______________
 | Power button shuts down | `sudo systemctl enable --now acpid.service` |
 | No statusline ever | check `/etc/ly/dwm-statusbar` exists + executable; `pgrep -f dwm-statusbar` |
 | Gestures dead | `pgrep -x touchegg`; verify `~/.config/touchegg/touchegg.conf` |
+| No keypress sounds | `systemctl --user status keypress-sound`; logs: `journalctl --user -u keypress-sound -e` |
+| dsa/keypress-sound missing | re-run `scripts/bin-copy.sh` (they ship in repo `bin/`, no ~/.bin source needed) |
 | Keybinds ignored | keymap swap may confuse muscle memory — remaps are session-wide (delete `/etc/ly/keyswap.sh &` line in `/etc/ly/dwm-session` to revert) |
 
 Run any time: **`bash scripts/doctor.sh`** — exits 1 on anything critical.

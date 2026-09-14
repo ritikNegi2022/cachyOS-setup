@@ -1,6 +1,16 @@
 #!/bin/bash
-# Copy binaries from ~/.bin folder to new system
-# Specifically: dsa, keypress-sound, and other useful tools
+# Copy binaries to ~/.bin on the new system.
+#
+# Sources, in order of reliability:
+#   1. REPO bin/            — dsa + keypress-sound are COMMITTED to this repo,
+#                             so a fresh laptop always gets them (there is no
+#                             ~/.bin source on a brand-new system).
+#   2. ~/.bin on the OLD system (override with BIN_SRC=/path) — optional extra
+#                             personal tools; every one of these may be absent
+#                             without failing the setup.
+#
+# Also: keypress-sound gets a systemd USER service (autostart at every
+# graphical login) and ~/.bin is added to PATH.
 # Part of cachyOS-setup — see setup.sh
 
 set -euo pipefail
@@ -14,6 +24,7 @@ log()  { echo -e "${GREEN}[ok]${NC}  $*"; }
 warn() { echo -e "${YELLOW}[warn]${NC} $*"; }
 err()  { echo -e "${RED}[err]${NC} $*" >&2; }
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_SRC="${BIN_SRC:-$HOME/.bin}"
 BIN_DST="$HOME/.bin"
 
@@ -26,18 +37,77 @@ mkdir -p "$BIN_DST"
 chmod 700 "$BIN_DST"
 
 # ---------------------------------------------------------------------------
-# 2. Copy specific binaries
+# 2. Install binaries shipped in this repo (always present)
 # ---------------------------------------------------------------------------
-if [[ "$BIN_SRC" == "$BIN_DST" ]]; then
-    log "Source and destination are the same ($BIN_SRC) — ensuring PATH only."
-else
-    log "Copying binaries from $BIN_SRC to $BIN_DST..."
-fi
-
-# List of binaries to copy (important ones)
-BINARIES=(
+# These were copied from the old system INTO the repo, so a fresh install
+# does not depend on any ~/.bin source existing.
+REPO_BIN_DIR="$REPO_ROOT/bin"
+CKSUM_FILE="$REPO_BIN_DIR/checksums.sha256"
+REPO_BINARIES=(
     "dsa"
     "keypress-sound"
+)
+
+# Verify repo binaries against the checksum manifest BEFORE installing:
+# catches truncated/corrupted binaries (bad transfer, failed clone, disk rot).
+if [[ -f "$CKSUM_FILE" ]]; then
+    log "Verifying repo binary checksums..."
+    if (cd "$REPO_BIN_DIR" && sha256sum -c --quiet checksums.sha256 2>/dev/null); then
+        log "  All repo binaries match checksums"
+    else
+        err "  CHECKSUM MISMATCH in $REPO_BIN_DIR — binaries are corrupted or stale"
+        err "  Fix: re-clone the repo, or regenerate the manifest:"
+        err "    (cd $REPO_BIN_DIR && sha256sum ${REPO_BINARIES[*]} > checksums.sha256)"
+        exit 1
+    fi
+else
+    warn "  No $CKSUM_FILE — skipping integrity verification"
+fi
+
+COPIED=0
+FAILED=0
+REPO_INSTALLED=0
+log "Installing repo-shipped binaries from $REPO_BIN_DIR/..."
+for binary in "${REPO_BINARIES[@]}"; do
+    src="$REPO_BIN_DIR/$binary"
+    dst="$BIN_DST/$binary"
+
+    if [[ ! -f "$src" ]]; then
+        warn "  Repo binary missing: $src (copy it into the repo bin/ dir)"
+        FAILED=$((FAILED + 1))
+        continue
+    fi
+
+    # Same file (running on the old system) -> nothing to do
+    if [[ -f "$dst" && "$src" -ef "$dst" ]]; then
+        log "  Already in place: $binary"
+        COPIED=$((COPIED + 1))
+        continue
+    fi
+
+    cp "$src" "$dst"
+    chmod +x "$dst"
+    log "  Installed from repo: $binary"
+    COPIED=$((COPIED + 1))
+    REPO_INSTALLED=$((REPO_INSTALLED + 1))
+done
+
+# Post-copy integrity check: proves the copies landed intact
+# (sha256sum -c resolves file names relative to CWD, so run it from $BIN_DST
+# against the repo's manifest — no manifest copy needed in ~/.bin)
+if [[ -f "$CKSUM_FILE" ]] && [[ "$REPO_INSTALLED" -eq ${#REPO_BINARIES[@]} ]]; then
+    if (cd "$BIN_DST" && sha256sum -c --quiet "$CKSUM_FILE" 2>/dev/null); then
+        log "  Installed binaries verified intact"
+    else
+        err "  Installed copies in $BIN_DST do NOT match checksums — disk issue?"
+        exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# 2b. Optional personal binaries from the OLD system's ~/.bin
+# ---------------------------------------------------------------------------
+BINARIES=(
     "agent"
     "agent-rs"
     "better-cd"
@@ -57,39 +127,36 @@ BINARIES=(
     "toggle-asmr"
 )
 
-COPIED=0
-FAILED=0
+if [[ "$BIN_SRC" == "$BIN_DST" ]]; then
+    log "Source and destination are the same ($BIN_SRC) — skipping old-system copy."
+elif [[ ! -d "$BIN_SRC" ]]; then
+    log "No $BIN_SRC on this system — skipping old-system binaries (repo binaries above are enough)."
+else
+    log "Copying extra binaries from $BIN_SRC..."
+    for binary in "${BINARIES[@]}"; do
+        src="$BIN_SRC/$binary"
+        dst="$BIN_DST/$binary"
 
-for binary in "${BINARIES[@]}"; do
-    src="$BIN_SRC/$binary"
-    dst="$BIN_DST/$binary"
-
-    # Skip entirely when src == dst (or we'd warn about files that are already in place)
-    if [[ "$src" == "$dst" ]]; then
         if [[ -f "$src" ]]; then
-            log "  Already in place: $binary"
+            if [[ -f "$dst" && "$src" -ef "$dst" ]]; then
+                log "  Already in place: $binary"
+            else
+                cp "$src" "$dst"
+                chmod +x "$dst" 2>/dev/null || true
+                log "  Copied: $binary"
+            fi
             COPIED=$((COPIED + 1))
+        else
+            warn "  Source not found: $binary (optional)"
+            FAILED=$((FAILED + 1))
         fi
-        continue
-    fi
+    done
 
-    if [[ -f "$src" ]]; then
-        cp "$src" "$dst"
-        chmod +x "$dst" 2>/dev/null || true
-        log "  Copied: $binary"
-        COPIED=$((COPIED + 1))
-    else
-        warn "  Source not found: $binary"
-        FAILED=$((FAILED + 1))
-    fi
-done
-
-# Also copy any other executables found (only when source != dest)
-if [[ "$BIN_SRC" != "$BIN_DST" ]]; then
+    # Also copy any other executables found
     for file in "$BIN_SRC"/*; do
         if [[ -f "$file" && -x "$file" ]]; then
             file_basename=$(basename "$file")
-            # Skip if already copied
+            # Skip if already present
             if [[ ! -f "$BIN_DST/$file_basename" ]]; then
                 cp "$file" "$BIN_DST/$file_basename"
                 chmod +x "$BIN_DST/$file_basename" 2>/dev/null || true
@@ -98,8 +165,6 @@ if [[ "$BIN_SRC" != "$BIN_DST" ]]; then
             fi
         fi
     done
-else
-    log "  Source and destination are same - skipping additional copy"
 fi
 
 # ---------------------------------------------------------------------------
@@ -146,20 +211,46 @@ for rc in "$HOME/.profile" "$HOME/.bash_profile" "$HOME/.zprofile"; do
 done
 
 # ---------------------------------------------------------------------------
+# 3.5 keypress-sound: systemd USER service (autostart on every graphical login)
+# ---------------------------------------------------------------------------
+# A boot-time SYSTEM service cannot work: before ly login there is no X
+# session and no user audio server. The user unit is bound to
+# graphical-session.target, which configs/ly/dwm-session starts at login —
+# so it runs automatically on every boot you log in.
+UNIT_SRC="$REPO_ROOT/configs/systemd/keypress-sound.service"
+UNIT_DST="$HOME/.config/systemd/user/keypress-sound.service"
+
+if [[ -x "$BIN_DST/keypress-sound" && -f "$UNIT_SRC" ]]; then
+    mkdir -p "$HOME/.config/systemd/user"
+    cp "$UNIT_SRC" "$UNIT_DST"
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user daemon-reload 2>/dev/null || true
+        systemctl --user enable keypress-sound.service 2>/dev/null \
+            && log "keypress-sound: user service enabled (starts at every login)" \
+            || warn "keypress-sound: could not enable user service (no session bus? start manually: systemctl --user enable --now keypress-sound)"
+    fi
+else
+    warn "keypress-sound binary or unit template missing — service not installed"
+fi
+
+# ---------------------------------------------------------------------------
 # 4. Summary
 # ---------------------------------------------------------------------------
 log ""
 log "============================================"
 log "  BIN COPY COMPLETE"
 log "============================================"
-log "  Source: $BIN_SRC"
-log "  Destination: $BIN_DST"
+log "  Repo source:  $REPO_ROOT/bin/ (dsa, keypress-sound)"
+log "  Extra source: $BIN_SRC (optional, old system)"
+log "  Destination:  $BIN_DST"
 log "  Copied: $COPIED binaries"
-log "  Failed: $FAILED (source not found)"
+log "  Failed: $FAILED (optional sources not found)"
 log ""
-log "  Binaries copied:"
+log "  Repo-shipped (always installed):"
 log "    - dsa (device security/authentication tool)"
-log "    - keypress-sound (keyboard sound effect tool)"
+log "    - keypress-sound (keyboard sound effect tool, systemd user service)"
+log ""
+log "  Optional (only if present in $BIN_SRC):"
 log "    - agent / agent-rs (agent tools)"
 log "    - better-cd (improved cd command)"
 log "    - change_configs (config changer)"

@@ -23,5 +23,11 @@ pgrep -x dunst >/dev/null 2>&1 || dunst &
 # Reminder daemon: hourly time pings + user reminders (see `remind` CLI)
 /etc/ly/reminderd &
 
+# systemd user services (keypress-sound etc.): the session must import the
+# environment (DISPLAY etc.) and start graphical-session.target for user
+# units bound to it to launch. No-op-safe when run repeatedly.
+systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP 2>/dev/null || true
+systemctl --user start graphical-session.target 2>/dev/null || true
+
 # Start dwm (replaces this shell)
 exec dwm

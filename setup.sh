@@ -8,7 +8,8 @@
 #   scripts/dwm-build.sh      — build dwm from AUR with our config.h
 #   scripts/dwm-config.sh     — ly display manager + dwm session + gestures
 #   scripts/ssh-setup.sh      — SSH config (git_blank key only)
-#   scripts/bin-copy.sh       — copy ~/.bin binaries (dsa, keypress-sound, ...)
+#   scripts/bin-copy.sh       — install ~/.bin tools (dsa + keypress-sound ship
+#                               in repo bin/; other personal tools from ~/.bin if present)
 #   scripts/postgres-setup.sh — full PostgreSQL setup
 #   scripts/pgadmin-setup.sh  — pgAdmin 4 desktop binary (AUR only)
 #   scripts/postgres-run.sh   — PostgreSQL service runner

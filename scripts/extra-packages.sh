@@ -28,7 +28,7 @@ log "Installing additional packages..."
 # NOTE: no inline comments inside the continuation below — they would become
 # extra arguments and break pacman argument parsing under `set -e`.
 $SUDO pacman -S --noconfirm --needed \
-    alsa-utils alsa-firmware sof-firmware alsa-ucm-conf \
+    alsa-lib alsa-utils alsa-firmware sof-firmware alsa-ucm-conf \
     pipewire pipewire-pulse pipewire-alsa wireplumber \
     networkmanager \
     bluez bluez-utils \
