@@ -24,6 +24,11 @@ foreground = "#eeeeee"
 bindings = [
   { key = "V", mods = "Control|Shift", action = "Paste" },
   { key = "C", mods = "Control|Shift", action = "Copy" },
+  # Super (Mod4) copy/paste — terminal-safe: never sends SIGINT (Ctrl+C)
+  { key = "V", mods = "Super",         action = "Paste" },
+  { key = "C", mods = "Super",         action = "Copy" },
+  { key = "X", mods = "Super",         action = "Copy" },
+  { key = "Insert", mods = "Super",    action = "Paste" },
 ]
 
 [selection]

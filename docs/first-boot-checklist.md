@@ -29,7 +29,8 @@ Setup: ______________  Date: ______________
 
 ## 2. Session basics (2 minutes)
 
-- [ ] **Super+Shift+Return** opens alacritty
+- [ ] **Super+Return** *and* **Super+Shift+Return** open alacritty (both work; `Super+Ctrl+Return` zooms)
+- [ ] Keybindings doc exists: `cat ~/Documents/keybindings.md` (also `cat /usr/share/doc/cachyOS-setup/keybindings.md`)
 - [ ] Screen background is **pure black** (no wallpaper)
 - [ ] **Super+F12** shows/hides the statusline (hidden by default)
       Bar should read: `vol:…% br:…% bat:…% nw:… cpu:…°C  <date>`

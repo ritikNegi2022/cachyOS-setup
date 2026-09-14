@@ -76,7 +76,14 @@ update() {
     xsetroot -name " vol:$vol  br:$br  bat:$bat  nw:$net  cpu:$temp  $tme"
 }
 
+# Responsive: wake instantly on volume/brightness changes via SIGUSR1
+trap 'update' USR1
+# Also handle TERM gracefully
+trap 'exit 0' TERM INT
+
 while :; do
     update
-    sleep 30 || break
+    # sleep 30 but interruptible by USR1 -> trap runs update instantly
+    sleep 30 &
+    wait $! 2>/dev/null || true
 done

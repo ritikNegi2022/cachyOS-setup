@@ -119,8 +119,28 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Node.js global packages
+# 5. Node.js global packages (user-writable prefix, no sudo needed)
 # ---------------------------------------------------------------------------
+log "Configuring npm global prefix (user-local, no sudo required)..."
+
+# Default npm prefix on Arch is /usr (root-owned) -> `npm install -g` fails with
+# EACCES for non-root users. Configure a user-writable prefix.
+if [[ "$(npm config get prefix 2>/dev/null)" == "/usr" ]]; then
+    mkdir -p "$HOME/.npm-global"
+    npm config set prefix "$HOME/.npm-global"
+    log "npm prefix set to $HOME/.npm-global"
+fi
+
+# Ensure prefix bin is in PATH for this session and future shells
+export PATH="$HOME/.npm-global/bin:$PATH"
+for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+    if [[ -f "$rc" ]] && ! grep -qF '.npm-global/bin' "$rc" 2>/dev/null; then
+        echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$rc"
+        log "Added npm global bin to PATH in $rc"
+    fi
+done
+mkdir -p "$HOME/.npm-global/bin"
+
 log "Installing Node.js global packages..."
 
 npm install -g \

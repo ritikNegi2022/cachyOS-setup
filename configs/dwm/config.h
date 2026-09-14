@@ -26,11 +26,8 @@ static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10" 
 static const Rule rules[] = {
     /* class            instance  title  tags mask  isfloating  monitor */
     { "Gimp",           NULL,     NULL,  0,         1,          -1 },
-    { "brave-browser",  NULL,     NULL,  1 << 8,    0,          -1 }, /* Brave → tag 9  */
-    { "zen-browser",    NULL,     NULL,  1 << 8,    0,          -1 }, /* Zen   → tag 9  */
-    { "Zed",            NULL,     NULL,  1 << 9,    0,          -1 }, /* Zed   → tag 10 */
-    { "zed",            NULL,     NULL,  1 << 9,    0,          -1 },
-    { "Devdocs",        NULL,     NULL,  1 << 8,    0,          -1 },
+    /* no auto-tag for browsers/Zed — user requested free placement (was tag 9/10) */
+    { "Devdocs",        NULL,     NULL,  0,         0,          -1 },
 };
 
 /* layout(s) */
@@ -56,6 +53,47 @@ static const Layout layouts[] = {
 
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
+#ifndef LENGTH
+#define LENGTH(X) (sizeof X / sizeof X[0])
+#endif
+
+/* custom helpers — must be before keys[] so dwm.c sees them */
+void shiftview(const Arg *arg);
+void shiftview(const Arg *arg) {
+    Arg a;
+    unsigned int cur = selmon->tagset[selmon->seltags];
+    unsigned int n = LENGTH(tags);
+    unsigned int shifted;
+    if (n == 0) return;
+    if (arg->i > 0) {
+        shifted = ((cur << arg->i) | (cur >> (n - arg->i))) & ((1u << n) - 1);
+    } else {
+        shifted = ((cur >> -arg->i) | (cur << (n + arg->i))) & ((1u << n) - 1);
+    }
+    // if view was "all" (~0) or empty, fallback to first/last
+    if (shifted == 0 || shifted == ((1u << n) - 1))
+        shifted = (arg->i > 0) ? 1u << 0 : 1u << (n - 1);
+    a.ui = shifted;
+    view(&a);
+}
+
+void togglefullscreen(const Arg *arg);
+void togglefullscreen(const Arg *arg) {
+    if (selmon->sel)
+        setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
+}
+
+/* simple Hyprland-like group: toggle monocle + remember previous layout
+   Group = show all windows on current tag tabbed (monocle), ungroup = tile */
+static int prev_layout_is_monocle = 0;
+void togglegroup(const Arg *arg) {
+    if (selmon->lt[selmon->sellt] == &layouts[2]) { // monocle = grouped
+        setlayout(&((Arg){.v = &layouts[0]})); // tile = ungrouped
+    } else {
+        setlayout(&((Arg){.v = &layouts[2]})); // monocle = grouped/tabbed
+    }
+}
+
 /* commands */
 static char dmenumon[2] = "0"; /* referenced by spawn() in dwm.c even when unbound */
 static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
@@ -68,12 +106,13 @@ static const char *sysmoncmd[] = { "alacritty", "-e", "btop", NULL };
 static const char *lazygitcmd[] = { "alacritty", "-e", "lazygit", NULL };
 
 /* --- media / laptop function-key commands --- */
-static const char *volupcmd[]    = { "wpctl", "set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", "5%+", NULL };
-static const char *voldncmd[]    = { "wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-", NULL };
-static const char *volmutecmd[]  = { "wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle", NULL };
-static const char *micmutecmd[]  = { "wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle", NULL };
-static const char *brupcmd[]     = { "brightnessctl", "set", "5%+", NULL };
-static const char *brdncmd[]     = { "brightnessctl", "set", "5%-", NULL };
+/* All volume/brightness commands poke statusbar via USR1 for instant feedback (see statusbar.sh trap) */
+static const char *volupcmd[]    = { "sh", "-c", "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+; pkill -USR1 dwm-statusbar 2>/dev/null; pkill -USR1 statusbar.sh 2>/dev/null; true", NULL };
+static const char *voldncmd[]    = { "sh", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-; pkill -USR1 dwm-statusbar 2>/dev/null; pkill -USR1 statusbar.sh 2>/dev/null; true", NULL };
+static const char *volmutecmd[]  = { "sh", "-c", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle; pkill -USR1 dwm-statusbar 2>/dev/null; pkill -USR1 statusbar.sh 2>/dev/null; true", NULL };
+static const char *micmutecmd[]  = { "sh", "-c", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle; pkill -USR1 dwm-statusbar 2>/dev/null; pkill -USR1 statusbar.sh 2>/dev/null; true", NULL };
+static const char *brupcmd[]     = { "sh", "-c", "brightnessctl set 5%+ >/dev/null; pkill -USR1 dwm-statusbar 2>/dev/null; pkill -USR1 statusbar.sh 2>/dev/null; true", NULL };
+static const char *brdncmd[]     = { "sh", "-c", "brightnessctl set 5%- >/dev/null; pkill -USR1 dwm-statusbar 2>/dev/null; pkill -USR1 statusbar.sh 2>/dev/null; true", NULL };
 static const char *mediaplaycmd[] = { "playerctl", "play-pause", NULL };
 static const char *medianextcmd[] = { "playerctl", "next", NULL };
 static const char *mediaprevcmd[] = { "playerctl", "previous", NULL };
@@ -87,8 +126,9 @@ static const char *calccmd[]     = { "alacritty", "-e", "sh", "-c", "echo 'calc 
 
 static const Key keys[] = {
     /* modifier            key          function        argument */
-    { MODKEY,              XK_Return,   zoom,           {0} },          /* stock dwm: zoom to master */
-    { MODKEY|ShiftMask,    XK_Return,   spawn,          {.v = termcmd } },
+    { MODKEY,              XK_Return,   spawn,          {.v = termcmd } },          /* Super+Enter -> terminal (was zoom) */
+    { MODKEY|ShiftMask,    XK_Return,   spawn,          {.v = termcmd } },          /* Super+Shift+Enter -> terminal (alternate, both work) */
+    { MODKEY|ControlMask,  XK_Return,   zoom,           {0} },          /* alternate zoom (was Super+Enter) */
     { MODKEY,              XK_b,        spawn,          {.v = bravecmd } },
     { MODKEY|ShiftMask,    XK_b,        spawn,          {.v = zencmd } },
     { MODKEY,              XK_e,        spawn,          {.v = editorcmd } },
@@ -118,6 +158,17 @@ static const Key keys[] = {
     { ShiftMask,           XK_Print,                spawn, {.v = selscreenshotcmd } },
     { MODKEY|ShiftMask,    XK_x,                    spawn, {.v = lockcmd } },   /* manual lock */
 
+    /* --- Super clipboard: Super+C/X/V -> copy/cut/paste everywhere, terminal-safe --- */
+    /* Alacritty already handles Super+C/V natively; this covers browsers/Zed/others */
+    /* Try /usr/local/bin first (privileged install), fallback to ~/.local/bin */
+    { MODKEY,              XK_c,                    spawn, SHCMD("super-clipboard c 2>/dev/null || $HOME/.local/bin/super-clipboard c") },
+    { MODKEY,              XK_x,                    spawn, SHCMD("super-clipboard x 2>/dev/null || $HOME/.local/bin/super-clipboard x") },
+    { MODKEY,              XK_v,                    spawn, SHCMD("super-clipboard v 2>/dev/null || $HOME/.local/bin/super-clipboard v") },
+
+    /* --- tag switching via gesture/keyboard: 3-finger left/right = tag-1/tag+1 --- */
+    { MODKEY|ControlMask,  XK_Left,                 shiftview,      {.i = -1 } },
+    { MODKEY|ControlMask,  XK_Right,                shiftview,      {.i = +1 } },
+
     { MODKEY,              XK_j,        focusstack,     {.i = +1 } },
     { MODKEY,              XK_k,        focusstack,     {.i = -1 } },
     { MODKEY,              XK_i,        incnmaster,     {.i = +1 } },
@@ -131,8 +182,10 @@ static const Key keys[] = {
     { MODKEY|ShiftMask,    XK_0,        tag,            {.ui = ~0 } },
 
     { MODKEY,              XK_t,        setlayout,      {.v = &layouts[0]} },
-    { MODKEY,              XK_f,        setlayout,      {.v = &layouts[1]} },
-    { MODKEY,              XK_m,        setlayout,      {.v = &layouts[2]} },
+    { MODKEY,              XK_f,        togglefullscreen, {0} },                           /* fullscreen current window */
+    { MODKEY|ShiftMask,    XK_f,        setlayout,      {.v = &layouts[1]} },            /* floating */
+    { MODKEY,              XK_m,        setlayout,      {.v = &layouts[2]} },            /* monocle */
+    { MODKEY,              XK_y,        togglegroup,    {0} },                           /* Hyprland-like group (monocle toggle) */
     { MODKEY,              XK_space,    setlayout,      {0} },
 
     { MODKEY,              XK_comma,    focusmon,       {.i = -1 } },

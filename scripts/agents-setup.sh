@@ -44,6 +44,23 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 0. Ensure npm global prefix is user-writable (fixes EACCES on /usr)
+# ---------------------------------------------------------------------------
+if [[ "$(npm config get prefix 2>/dev/null)" == "/usr" ]]; then
+    mkdir -p "$HOME/.npm-global"
+    npm config set prefix "$HOME/.npm-global"
+    log "npm prefix set to $HOME/.npm-global (was /usr, root-owned)"
+fi
+export PATH="$HOME/.npm-global/bin:$PATH"
+for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+    if [[ -f "$rc" ]] && ! grep -qF '.npm-global/bin' "$rc" 2>/dev/null; then
+        echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$rc"
+        log "Added npm global bin to PATH in $rc"
+    fi
+done
+mkdir -p "$HOME/.npm-global/bin"
+
+# ---------------------------------------------------------------------------
 # 1. Install freebuff (npm-based)
 # ---------------------------------------------------------------------------
 log ""
@@ -58,7 +75,7 @@ if command -v freebuff >/dev/null 2>&1; then
     log "Version: $FREEBUFF_VERSION"
 else
     log "Installing freebuff via npm..."
-    
+
     if npm install -g freebuff 2>/dev/null; then
         log "freebuff installed successfully"
         

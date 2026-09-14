@@ -74,6 +74,107 @@ if have_file /etc/acpi/events/power && grep -q 'button/power' /etc/acpi/events/p
 else
     warn "/etc/acpi/events/power missing or wrong (power button may shut down!)"
 fi
+if have_file /etc/X11/xorg.conf.d/30-natural-scroll.conf && grep -q 'NaturalScrolling.*true' /etc/X11/xorg.conf.d/30-natural-scroll.conf 2>/dev/null; then
+    pass "natural (inverted) scrolling Xorg config installed"
+else
+    warn "natural scrolling config missing: /etc/X11/xorg.conf.d/30-natural-scroll.conf (re-run scripts/dwm-config.sh)"
+fi
+if have_file /etc/X11/xorg.conf.d/30-natural-scroll.conf; then
+    # live check: xinput natural scrolling enabled?
+    if [ -n "${DISPLAY:-}" ] && command -v xinput >/dev/null 2>&1; then
+        nat_on=0; nat_off=0
+        for _id in $(xinput list --id-only 2>/dev/null); do
+            if xinput list-props "$_id" 2>/dev/null | grep -q "Natural Scrolling Enabled"; then
+                if xinput list-props "$_id" 2>/dev/null | grep -q "Natural Scrolling Enabled.*1"; then nat_on=$((nat_on+1)); else nat_off=$((nat_off+1)); fi
+            fi
+        done
+        if [ "$nat_on" -gt 0 ] && [ "$nat_off" -eq 0 ]; then pass "natural scrolling live (xinput enabled)"; else warn "natural scrolling Xorg installed but live xinput not all enabled ($nat_on on, $nat_off off)"; fi
+        unset _id
+    fi
+fi
+if have_exec /usr/local/bin/super-clipboard || have_exec "$HOME/.local/bin/super-clipboard"; then
+    pass "super-clipboard installed (/usr/local/bin/super-clipboard)"
+else
+    warn "super-clipboard missing (Super+C/X/V universal copy/paste won't work)"
+fi
+if have_file "$HOME/.config/alacritty/alacritty.toml" && grep -q 'Super.*Copy' "$HOME/.config/alacritty/alacritty.toml" 2>/dev/null; then
+    pass "alacritty Super+C/V bindings present (terminal-safe copy/paste)"
+else
+    warn "alacritty Super+C/V bindings missing (re-run setup.sh step 5)"
+fi
+# Keybindings doc (readable offline + in repo)
+for kb in "$HOME/Documents/keybindings.md" "$HOME/keybindings.md" "/usr/share/doc/cachyOS-setup/keybindings.md"; do
+    if have_file "$kb"; then pass "keybindings doc: $kb"; else warn "keybindings doc missing: $kb (re-run setup.sh step 5)"; fi
+done
+if have_file "$REPO_ROOT/docs/keybindings.md" && have_file "$REPO_ROOT/keybingd.md"; then
+    pass "repo keybingd.md + docs/keybindings.md present"
+else
+    warn "repo docs/keybindings.md or keybingd.md missing"
+fi
+# dwm Super+Enter terminal binding (both Super+Enter and Super+Shift+Enter)
+if grep -q "MODKEY.*XK_Return.*spawn.*termcmd" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    # check both variants present
+    if grep -q "MODKEY,.*XK_Return.*termcmd" "$REPO_ROOT/configs/dwm/config.h" && grep -q "MODKEY|ShiftMask.*XK_Return.*termcmd" "$REPO_ROOT/configs/dwm/config.h"; then
+        pass "dwm Super+Enter + Super+Shift+Enter both spawn terminal (config.h)"
+    else
+        warn "dwm Super+Enter binding incomplete in config.h"
+    fi
+else
+    warn "dwm Super+Enter not bound to terminal in config.h"
+fi
+# Statusbar instant feedback (USR1)
+if grep -q "trap.*USR1" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null && grep -q "pkill -USR1" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    pass "statusbar instant (trap USR1 + pkill on vol/brightness)"
+else
+    warn "statusbar not instant — missing USR1 trap/pkill (run dwm-config.sh)"
+fi
+# No auto-tag for browsers/Zed
+if grep -q "brave-browser.*1 << 8" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null || grep -q "Zed.*1 << 9" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    warn "dwm still auto-tags browsers/Zed to tag 9/10 (should be free)"
+else
+    pass "dwm no auto-tag for browsers/Zed (free placement)"
+fi
+# Touchegg left/right -> tag switching
+if grep -q "super+ctrl+Left" "$REPO_ROOT/configs/touchegg.conf" 2>/dev/null && grep -q "super+ctrl+Right" "$REPO_ROOT/configs/touchegg.conf" 2>/dev/null; then
+    pass "touchegg 3-finger left/right -> prev/next tag (shiftview)"
+else
+    warn "touchegg left/right not bound to tag switching (should be super+ctrl+Left/Right)"
+fi
+if grep -q "shiftview" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    pass "dwm shiftview (tag-1/tag+1) present"
+else
+    warn "dwm shiftview missing (tag switching via gesture won't work)"
+fi
+# Fullscreen
+if grep -q "togglefullscreen" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    pass "dwm fullscreen binding Super+f (togglefullscreen) present"
+else
+    warn "dwm fullscreen binding missing (Super+f togglefullscreen)"
+fi
+# Group (Hyprland-like)
+if grep -q "togglegroup" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    pass "dwm group binding Super+y (togglegroup) present"
+else
+    warn "dwm group binding missing (Super+y togglegroup)"
+fi
+# Locale UTF-8 check (btop requires UTF-8 — "No UTF-8 locale detected!" fix)
+if grep -q "UTF-8" /etc/locale.conf 2>/dev/null; then
+    pass "locale UTF-8 configured in /etc/locale.conf"
+else
+    fail "locale not UTF-8 in /etc/locale.conf (btop will fail — run scripts/locale-setup.sh)"
+fi
+if [ "$(locale charmap 2>/dev/null)" = "UTF-8" ]; then
+    pass "current locale charmap UTF-8 (LANG=$LANG)"
+else
+    warn "current locale charmap not UTF-8: $(locale charmap 2>/dev/null) (LANG=$LANG) — export LANG=en_IN.UTF-8"
+fi
+if command -v btop >/dev/null 2>&1; then
+    if btop --version 2>&1 | grep -q "No UTF-8"; then
+        fail "btop UTF-8 check failed (No UTF-8 locale detected — run scripts/locale-setup.sh)"
+    else
+        pass "btop UTF-8 check passed"
+    fi
+fi
 
 # keypress-sound: user unit installed + enabled (autostarts at graphical login)
 UNIT_FILE="$HOME/.config/systemd/user/keypress-sound.service"
@@ -227,6 +328,11 @@ else
             pass "CapsLock<->Esc remap active"
         else
             warn "CapsLock remap not active (keyswap.sh did not run?)"
+        fi
+        if command -v dwm >/dev/null 2>&1 && strings "$(command -v dwm)" 2>/dev/null | grep -q 'super-clipboard'; then
+            pass "dwm Super+C/X/V bindings embedded"
+        else
+            warn "dwm missing Super+C/X/V bindings — rebuild with scripts/dwm-build.sh"
         fi
     fi
 fi

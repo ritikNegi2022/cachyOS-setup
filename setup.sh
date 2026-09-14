@@ -49,6 +49,9 @@ fi
 # ---------------------------------------------------------------------------
 # Run sub-scripts
 # ---------------------------------------------------------------------------
+log "=== Step 0: Ensure UTF-8 locale (fixes btop 'No UTF-8 locale detected') ==="
+bash "$THIS_DIR/scripts/locale-setup.sh"
+
 log "=== Step 1: Install core packages (incl. pgadmin4-desktop via AUR) ==="
 bash "$THIS_DIR/scripts/install.sh"
 
@@ -75,10 +78,32 @@ chmod +x ~/.config/lf/preview.sh
 # touchegg user config — the daemon (started per-session by dwm-session) reads
 # ~/.config/touchegg/touchegg.conf on Arch; /etc/touchegg/ is not used.
 cp "$THIS_DIR/configs/touchegg.conf" ~/.config/touchegg/touchegg.conf
+# Super+Enter live fallback helper (until dwm rebuild)
+mkdir -p ~/.local/bin
+if [[ -f "$THIS_DIR/configs/dwm/super-enter-live.py" ]]; then
+    cp "$THIS_DIR/configs/dwm/super-enter-live.py" ~/.local/bin/super-enter-live.py
+    chmod +x ~/.local/bin/super-enter-live.py
+    # ensure pynput available for fallback
+    python3 -c "import pynput" 2>/dev/null || pip install --user --break-system-packages pynput 2>/dev/null || true
+fi
 
 # Zed editor configs
 cp "$THIS_DIR/configs/zed/settings.json" ~/.config/zed/settings.json
 cp "$THIS_DIR/configs/zed/keymap.json" ~/.config/zed/keymap.json
+
+# Keybindings doc — readable on new system + in repo
+mkdir -p ~/Documents ~/.local/share/cachyOS-setup
+if [[ -f "$THIS_DIR/docs/keybindings.md" ]]; then
+    cp "$THIS_DIR/docs/keybindings.md" ~/Documents/keybindings.md
+    cp "$THIS_DIR/docs/keybindings.md" ~/.local/share/cachyOS-setup/keybindings.md
+    $SUDO mkdir -p /usr/share/doc/cachyOS-setup
+    $SUDO cp "$THIS_DIR/docs/keybindings.md" /usr/share/doc/cachyOS-setup/keybindings.md
+    # also copy typo-named file if present (requested as keybingd.md)
+    [[ -f "$THIS_DIR/keybingd.md" ]] && cp "$THIS_DIR/keybingd.md" ~/Documents/keybingd.md 2>/dev/null || true
+    [[ -f "$THIS_DIR/keybingd.md" ]] && $SUDO cp "$THIS_DIR/keybingd.md" /usr/share/doc/cachyOS-setup/keybingd.md 2>/dev/null || true
+    # also keep a copy in ~/ for quick `cat ~/keybindings.md`
+    cp "$THIS_DIR/docs/keybindings.md" ~/keybindings.md 2>/dev/null || true
+fi
 
 # Note: ly config + dwm session go to /etc/ly/ and /usr/share/xsessions/
 # (handled by dwm-config.sh as root). pgAdmin ships no repo config on purpose —
@@ -123,13 +148,16 @@ echo "    sudo systemctl disable ly@tty1.service && sudo systemctl enable getty@
 echo "    sudo systemctl set-default multi-user.target"
 echo ""
 echo "  DWM KEYBINDINGS (configs/dwm/config.h):"
-echo "    Super+Shift+Return -> alacritty (terminal)"
+echo "    Super+Return / Super+Shift+Return -> alacritty (terminal, both work; zoom moved to Super+Ctrl+Return)"
 echo "    Super+b       -> Brave browser (tag 9)"
 echo "    Super+Shift+b -> Zen browser (tag 9)"
 echo "    Super+e       -> Zed editor (tag 10)"
 echo "    Super+g       -> lf file manager"
 echo "    Super+Shift+g -> lazygit"
 echo "    Super+Shift+s -> btop"
+echo "    Super+f       -> fullscreen current window | Super+Shift+f -> floating | Super+y -> group (Hyprland-like monocle)"
+echo "    Super+c/x/v   -> copy/cut/paste everywhere (terminal-safe, no SIGINT)"
+echo "    Super+Ctrl+Left/Right -> prev/next tag (also 3-finger swipe left/right)"
 echo "    Super+1..9    -> tags 1-9 | Super+minus -> tag 10"
 echo "    Super+Shift+c -> close window | Super+Shift+q -> quit dwm"
 echo "    Super+Shift+x -> lock screen (slock)"
@@ -139,9 +167,7 @@ echo "    play/pause/next/prev (playerctl), PrintScr screenshots (maim),"
 echo "    calculator (bc), display (xrandr --auto), sleep, touchpad toggle."
 echo ""
 echo "  WORKSPACE LAYOUT (tags):"
-echo "    Tags 1-8  -> coding workspaces"
-echo "    Tag 9     -> browsers (Brave + Zen auto-placed)"
-echo "    Tag 10    -> Zed editor (auto-placed)"
+echo "    Tags 1-10 -> free placement (no auto-tag for browsers/Zed, was tag 9/10)"
 echo ""
 echo "  LANGUAGE TOOLS INSTALLED:"
 echo "    Python: python + pip + uv + ruff + pytest + pyright"
@@ -156,7 +182,7 @@ echo "  PGADMIN 4 (desktop binary only, no web mode):"
 echo "    Launch: pgadmin4"
 echo ""
 echo "  TRACKPAD GESTURES (3-finger swipes via touchegg):"
-echo "    Up -> zoom window | Down -> close window | Left/Right -> resize master"
+echo "    Up -> zoom window | Down -> close window | Left/Right -> prev/next tag"
 echo ""
 echo ""
 echo "  EXTRAS:"
@@ -164,6 +190,9 @@ echo "    - Verify this install any time:   bash scripts/doctor.sh"
 echo "    - Printable first-boot checklist: docs/first-boot-checklist.md"
 echo "    - Statusline hidden by default -> Super+F12 toggles it"
 echo "    - Key remaps: ESC <-> CapsLock, Alt <-> Ctrl (session-wide)"
+echo "    - Input: natural (inverted) scrolling + Super+C/X/V universal copy/paste"
+echo "    - Statusbar: instant vol/brightness (USR1), no delay"
+echo "    - Keybindings doc: ~/Documents/keybindings.md + /usr/share/doc/cachyOS-setup/"
 echo "    - Power button LOCKS the screen (slock) instead of shutting down"
 echo "      (acpid; shutdown via CLI: systemctl poweroff)"
 echo "    - Hourly time notifications + reminders via dunst:"

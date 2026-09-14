@@ -3,6 +3,9 @@
 # Referenced by configs/ly/dwm.desktop (Exec= line), installed to /etc/ly/dwm-session
 # Runs when the user selects "dwm" at the ly login screen.
 
+# Ensure npm global and local bin are in PATH for dwm-spawned helpers (super-clipboard, remind, etc.)
+export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/.bin:/usr/local/bin:$PATH"
+
 # Touchegg daemon — must run inside the user session for xdotool to work.
 # Arch's packaged /etc/xdg/autostart/touchegg.desktop does this too; the
 # pgrep guard avoids a second instance.
@@ -14,6 +17,12 @@ xsetroot -solid "#000000"
 # Session key remaps: ESC<->CapsLock, Alt<->Ctrl (delete this line to revert)
 /etc/ly/keyswap.sh &
 
+# Natural scrolling: apply live for current session (Xorg conf handles next boot)
+for _id in $(xinput list --id-only 2>/dev/null); do
+    xinput list-props "$_id" 2>/dev/null | grep -q "Natural Scrolling Enabled (" && \
+        xinput set-prop "$_id" "libinput Natural Scrolling Enabled" 1 2>/dev/null || true
+done; unset _id
+
 # Notifications (dunst — started once per session)
 pgrep -x dunst >/dev/null 2>&1 || dunst &
 
@@ -22,6 +31,17 @@ pgrep -x dunst >/dev/null 2>&1 || dunst &
 
 # Reminder daemon: hourly time pings + user reminders (see `remind` CLI)
 /etc/ly/reminderd &
+
+# Live fallback for Super+Enter -> terminal until dwm is rebuilt with new config.h
+# (config.h:90 now binds both Super+Enter and Super+Shift+Enter to termcmd; old binary only had Shift)
+if ! strings "$(command -v dwm)" 2>/dev/null | grep -q "super-clipboard"; then
+    # Old dwm: also need fallback for Super+Enter if not yet rebuilt
+    :
+fi
+# Temporary pynput daemon: makes Super+Enter spawn alacritty even on old dwm (both Super+Enter and Shift work)
+if ! strings "$(command -v dwm)" 2>/dev/null | grep -q "MODKEY.*XK_Return.*termcmd" 2>/dev/null; then
+    pgrep -f super-enter-live.py >/dev/null 2>&1 || nohup python3 "$HOME/.local/bin/super-enter-live.py" >/tmp/super-enter-live.log 2>&1 &
+fi
 
 # systemd user services (keypress-sound etc.): the session must import the
 # environment (DISPLAY etc.) and start graphical-session.target for user
