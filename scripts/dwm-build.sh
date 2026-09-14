@@ -18,10 +18,10 @@ log()  { echo -e "${GREEN}[ok]${NC}  $*"; }
 err()  { echo -e "${RED}[err]${NC} $*" >&2; }
 
 if [[ $EUID -eq 0 ]]; then
-    SUDO=""
-else
-    SUDO="sudo"
+    err "dwm-build must not run as root (makepkg refuses root) — run as normal user"
+    exit 1
 fi
+SUDO=(sudo)
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_H="$REPO_ROOT/configs/dwm/config.h"
@@ -55,12 +55,17 @@ log "Building dwm with custom config.h in $BUILD_DIR"
 
     # Inject our config.h at the point prepare() copies FROM, and also
     # directly into the extracted tree (belt + suspenders).
+    injected=0
     if [[ -f src/config.h ]]; then
-        cp -f "$CONFIG_H" src/config.h
+        cp -f "$CONFIG_H" src/config.h && injected=1
     fi
     local_tree="$(find src -maxdepth 1 -type d -name 'dwm-*' | head -1)"
     if [[ -n "$local_tree" && -f "$local_tree/config.h" ]]; then
-        cp -f "$CONFIG_H" "$local_tree/config.h"
+        cp -f "$CONFIG_H" "$local_tree/config.h" && injected=1
+    fi
+    if [[ $injected -eq 0 ]]; then
+        err "Failed to inject config.h — src/config.h and \$local_tree missing (makepkg -o may have failed)"
+        exit 1
     fi
     log "Injected custom config.h (src/config.h + $local_tree/config.h)"
 

@@ -4,8 +4,18 @@
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
+-- Monochrome palette: black ↔ white (no blue)
+vim.opt.termguicolors = true
+vim.opt.background = "dark"
 -- Only set colorscheme if it actually exists (avoids E185 on startup)
 pcall(vim.cmd.colorscheme, "habamax")
+-- Enforce monochrome overrides (habamax is already muted, force grays)
+vim.api.nvim_set_hl(0, "Normal", { bg = "#000000", fg = "#eeeeee" })
+vim.api.nvim_set_hl(0, "CursorLine", { bg = "#1a1a1a" })
+vim.api.nvim_set_hl(0, "Visual", { bg = "#333333", fg = "#ffffff" })
+vim.api.nvim_set_hl(0, "Comment", { fg = "#777777", italic = true })
+vim.api.nvim_set_hl(0, "LineNr", { fg = "#555555" })
+vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#bbbbbb" })
 
 local opt = vim.opt
 opt.number = true

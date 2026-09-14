@@ -15,7 +15,12 @@ pgrep -x touchegg >/dev/null 2>&1 || touchegg &
 xsetroot -solid "#000000"
 
 # Session key remaps: ESC<->CapsLock, Alt<->Ctrl (delete this line to revert)
-/etc/ly/keyswap.sh &
+# Run synchronously (no &) so remaps are applied before dwm grabs keys
+if [ -x /etc/ly/keyswap.sh ]; then
+    /etc/ly/keyswap.sh || xmodmap /etc/ly/keyswap.sh 2>/dev/null || true
+fi
+# Fallback: also try user Xmodmap if exists
+[ -f "$HOME/.Xmodmap" ] && xmodmap "$HOME/.Xmodmap" 2>/dev/null || true
 
 # Natural scrolling: apply live for current session (Xorg conf handles next boot)
 for _id in $(xinput list --id-only 2>/dev/null); do

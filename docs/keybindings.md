@@ -40,12 +40,12 @@
 | `Super + h / l` | shrink/expand master area (`setmfact` -0.05/+0.05) |
 | `Super + i / d` | inc/dec number of master windows |
 | `Super + Tab` | view previous tag |
-| `Super + t` | tile layout |
-| `Super + m` | monocle layout |
-| `Super + f` | **fullscreen** current window (`togglefullscreen`) |
-| `Super + Shift + f` | floating layout |
+| `Super + t` | tile layout `` (was `[]=`) — **clickable** `ClkLtSymbol` `Button1` |
+| `Super + f` | **fullscreen** current window `` (`togglefullscreen`) — **clickable** layout |
+| `Super + Shift + f` | floating layout `` (was `><>`) — **clickable** `Button3` → monocle |
+| `Super + m` | monocle layout `` (`[M]`) — **clickable** `Button3` |
 | `Super + y` | **group** windows Hyprland-like (toggle monocle/tabbed) (`togglegroup`) |
-| `Super + Space` | toggle layout |
+| `Super + Space` | toggle layout (cycle) |
 | `Super + Shift + Space` | toggle floating |
 | `Super + Shift + c` | **kill window** (`killclient`) |
 | `Super + Shift + q` | **quit dwm** |
@@ -53,6 +53,8 @@
 | `Super + comma / period` | focus prev/next monitor |
 | `Super + Shift + comma / period` | move window to prev/next monitor |
 | `Super + Ctrl + Left / Right` | switch tags **prev/next** (`shiftview` -1/+1) |
+
+**Layout symbols (after tags, clickable):** `` = tile (`[]=`), `` = floating (`><>`), `` = monocle (`[M]`). `Button1` on `` cycles, `Button3` jumps to monocle `config.h:214` `ClkLtSymbol`. `ClkWinTitle Button2` zoom, `ClkStatusText Button2` spawns terminal.
 
 ## Tags (workspaces)
 

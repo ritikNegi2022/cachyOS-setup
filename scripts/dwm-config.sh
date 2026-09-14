@@ -44,11 +44,19 @@ $SUDO install -m 755 "$REPO_ROOT/configs/dwm/keyswap.sh" /etc/ly/keyswap.sh
 $SUDO install -m 755 "$REPO_ROOT/configs/dwm/reminderd" /etc/ly/reminderd
 $SUDO install -m 755 "$REPO_ROOT/configs/dwm/remind" /usr/local/bin/remind
 
-# Power button -> lock (slock) instead of shutdown, via acpid
+# Power button -> lock (slock) instead of shutdown, via acpid + logind override
 $SUDO pacman -S --noconfirm --needed acpid
 $SUDO install -m 755 "$REPO_ROOT/configs/acpi/power-btn.sh" /etc/acpi/power-btn.sh
 $SUDO install -m 644 "$REPO_ROOT/configs/acpi/power" /etc/acpi/events/power
 $SUDO systemctl enable --now acpid.service
+# Inhibit systemd-logind's default poweroff so acpid can handle it
+$SUDO mkdir -p /etc/systemd/logind.conf.d
+if [[ -f "$REPO_ROOT/configs/systemd/logind.conf.d/10-powerkey.conf" ]]; then
+    $SUDO cp "$REPO_ROOT/configs/systemd/logind.conf.d/10-powerkey.conf" /etc/systemd/logind.conf.d/10-powerkey.conf
+    log "Installed /etc/systemd/logind.conf.d/10-powerkey.conf (HandlePowerKey=ignore → acpid → slock)"
+    # Reload logind without killing session (HUP), fallback to restart
+    $SUDO kill -HUP $(pidof systemd-logind 2>/dev/null | head -1) 2>/dev/null || $SUDO systemctl kill --kill-who=main --signal=HUP systemd-logind 2>/dev/null || true
+fi
 log "Power button now locks the screen (slock) — shutdown via CLI only"
 
 # ---------------------------------------------------------------------------
@@ -111,13 +119,31 @@ if [[ -f "$REPO_ROOT/configs/dwm/super-enter-live.py" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Touchegg gestures — daemon runs in the user session (started by
-#    dwm-session), so RUN_COMMAND actions (xdotool) can drive dwm.
+# 5. Touchegg gestures — system daemon (Group=input) + user client
+#    Daemon needs input group to read /dev/input/event*; client runs in dwm-session.
 #    Arch's touchegg does NOT read /etc/touchegg/; user config lives at
 #    ~/.config/touchegg/touchegg.conf (installed in setup.sh Step 5).
-#    Enable the service for autostart, but keep it session-scoped.
 # ---------------------------------------------------------------------------
-log "Touchegg: using user config ~/.config/touchegg/touchegg.conf (daemon from dwm-session)"
+log "Touchegg: enabling system daemon + user config..."
+$SUDO systemctl enable --now touchegg.service 2>&1 | tail -n 5 || warn "touchegg.service enable failed (try manually: sudo systemctl enable --now touchegg.service)"
+# Fallback: ensure user in input group for user-daemon mode (if system daemon disabled)
+if ! groups 2>/dev/null | grep -qw input; then
+    $SUDO usermod -aG input "$USER" 2>/dev/null && log "Added $USER to input group (re-login needed for user daemon fallback)" || true
+fi
+# Ensure user config exists for live session (setup.sh also does)
+mkdir -p ~/.config/touchegg 2>/dev/null || true
+if [[ -f "$REPO_ROOT/configs/touchegg.conf" ]]; then
+    cp "$REPO_ROOT/configs/touchegg.conf" ~/.config/touchegg/touchegg.conf 2>/dev/null && log "Installed ~/.config/touchegg/touchegg.conf (left/right -> prev/next tag)"
+fi
+# Restart client to pick new config (daemon already running)
+pkill touchegg 2>/dev/null || true
+sleep 0.5
+# Start daemon if system service not active (fallback user daemon)
+if ! pgrep -f "touchegg --daemon" >/dev/null 2>&1 && ! systemctl is-active --quiet touchegg 2>/dev/null; then
+    nohup touchegg --daemon >/tmp/touchegg-daemon.log 2>&1 & disown 2>/dev/null; sleep 0.5
+fi
+nohup touchegg >/tmp/touchegg.log 2>&1 & disown 2>/dev/null; sleep 0.5
+if pgrep -x touchegg >/dev/null 2>&1; then log "touchegg daemon+client running"; else warn "touchegg not running (check daemon)"; fi
 
 # ---------------------------------------------------------------------------
 # 6. Summary
@@ -165,11 +191,11 @@ echo "    Shift+PrintScr          -> select-area screenshot"
 echo "    XF86 Calculator         -> bc in terminal"
 echo "    XF86 Display / Sleep / Lock / Touchpad -> xrandr / suspend / slock / xinput"
 echo ""
-echo "  TRACKPAD GESTURES (touchegg daemon in user session, config at"
+echo "  TRACKPAD GESTURES (touchegg system daemon + user client, config at"
 echo "    ~/.config/touchegg/touchegg.conf):"
-echo "    3-finger up         -> zoom window to master"
-echo "    3-finger down       -> close window"
-echo "    3-finger left/right -> resize master area"
+echo "    3-finger up         -> zoom window to master (Super+Ctrl+Return)"
+echo "    3-finger down       -> close window (Super+Shift+c)"
+echo "    3-finger left/right -> prev/next tag (Super+Ctrl+Left/Right, shiftview)"
 echo ""
 echo ""
 echo "  EXTRAS:"

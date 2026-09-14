@@ -74,6 +74,16 @@ if have_file /etc/acpi/events/power && grep -q 'button/power' /etc/acpi/events/p
 else
     warn "/etc/acpi/events/power missing or wrong (power button may shut down!)"
 fi
+if have_file /etc/systemd/logind.conf.d/10-powerkey.conf && grep -q "HandlePowerKey=ignore" /etc/systemd/logind.conf.d/10-powerkey.conf 2>/dev/null; then
+    pass "logind HandlePowerKey=ignore (power button → slock via acpid, not shutdown)"
+else
+    warn "logind HandlePowerKey not ignore — power button may still shutdown (run dwm-config.sh / apply-privileged.sh)"
+fi
+if have_file /etc/acpi/power-btn.sh && grep -q "slock" /etc/acpi/power-btn.sh 2>/dev/null; then
+    pass "acpi power-btn.sh → slock (lock, not shutdown)"
+else
+    warn "acpi power-btn.sh missing slock"
+fi
 if have_file /etc/X11/xorg.conf.d/30-natural-scroll.conf && grep -q 'NaturalScrolling.*true' /etc/X11/xorg.conf.d/30-natural-scroll.conf 2>/dev/null; then
     pass "natural (inverted) scrolling Xorg config installed"
 else
@@ -111,6 +121,26 @@ if have_file "$REPO_ROOT/docs/keybindings.md" && have_file "$REPO_ROOT/keybingd.
 else
     warn "repo docs/keybindings.md or keybingd.md missing"
 fi
+# Custom programs doc (reminder, super-clipboard, statusbar, etc.) alongside keybindings
+for cp in "$HOME/Documents/custom-programs.md" "$HOME/custom-programs.md" "/usr/share/doc/cachyOS-setup/custom-programs.md"; do
+    if have_file "$cp"; then pass "custom programs doc: $cp"; else warn "custom programs doc missing: $cp (re-run setup.sh step 5)"; fi
+done
+if have_file "$REPO_ROOT/docs/custom-programs.md"; then
+    pass "repo docs/custom-programs.md present"
+else
+    warn "repo docs/custom-programs.md missing"
+fi
+# Reminder program check
+if have_file "$HOME/.config/dwm/reminders.txt" || have_file "/etc/ly/reminderd"; then
+    pass "reminder program installed (remind + reminderd)"
+else
+    warn "reminder program missing (remind/reminderd not found)"
+fi
+if have_exec /usr/local/bin/remind && have_file /etc/ly/reminderd; then
+    pass "remind CLI + daemon present"
+else
+    warn "remind CLI or daemon missing"
+fi
 # dwm Super+Enter terminal binding (both Super+Enter and Super+Shift+Enter)
 if grep -q "MODKEY.*XK_Return.*spawn.*termcmd" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
     # check both variants present
@@ -122,11 +152,51 @@ if grep -q "MODKEY.*XK_Return.*spawn.*termcmd" "$REPO_ROOT/configs/dwm/config.h"
 else
     warn "dwm Super+Enter not bound to terminal in config.h"
 fi
-# Statusbar instant feedback (USR1)
+# Statusbar instant feedback (USR1) + 1s refresh with seconds + icons
 if grep -q "trap.*USR1" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null && grep -q "pkill -USR1" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
     pass "statusbar instant (trap USR1 + pkill on vol/brightness)"
 else
     warn "statusbar not instant — missing USR1 trap/pkill (run dwm-config.sh)"
+fi
+if grep -q "sleep 1" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null; then
+    pass "statusbar refresh 1s (was 30s)"
+else
+    warn "statusbar not 1s refresh — should be sleep 1 (was 30s)"
+fi
+if grep -q "%H:%M:%S" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null; then
+    pass "statusbar clock shows seconds (%H:%M:%S)"
+else
+    warn "statusbar clock missing seconds — should be %H:%M:%S"
+fi
+if grep -q "│" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null && grep -q "\|󰃠\|\|\|" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null; then
+    pass "statusbar icons & styling present (Nerd Font)"
+else
+    warn "statusbar missing icons/styling (should have │ and Nerd icons)"
+fi
+if grep -q "cpu_usage" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null && grep -q "󰘚" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null; then
+    pass "statusbar CPU per-core usage present (󰘚 + /proc/stat)"
+else
+    warn "statusbar CPU per-core missing (should have 󰘚 + per-core %)"
+fi
+if grep -q "MemAvailable" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null && grep -q "󰍛" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null; then
+    pass "statusbar memory usage present (󰍛 + /proc/meminfo)"
+else
+    warn "statusbar memory missing (should have 󰍛 + MemAvailable)"
+fi
+if grep -q "showbar = 0" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    pass "dwm showbar=0 (hidden by default, Super+F12 to toggle)"
+else
+    warn "dwm showbar not 0 — bar visible by default (should be 0 hidden)"
+fi
+# dwm-session keyswap sync (no &)
+if grep -q "/etc/ly/keyswap.sh &" "$REPO_ROOT/configs/ly/dwm-session" 2>/dev/null; then
+    warn "dwm-session keyswap still backgrounded (&) — should be sync"
+else
+    if grep -q "/etc/ly/keyswap.sh" "$REPO_ROOT/configs/ly/dwm-session" 2>/dev/null; then
+        pass "dwm-session keyswap sync (no &)"
+    else
+        warn "dwm-session missing keyswap call"
+    fi
 fi
 # No auto-tag for browsers/Zed
 if grep -q "brave-browser.*1 << 8" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null || grep -q "Zed.*1 << 9" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
@@ -156,6 +226,38 @@ if grep -q "togglegroup" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
     pass "dwm group binding Super+y (togglegroup) present"
 else
     warn "dwm group binding missing (Super+y togglegroup)"
+fi
+# Layout icons (proper Nerd Font)
+if grep -q "" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null && grep -q "" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null && grep -q "" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    pass "dwm layout icons // present (was []=/><>/[M])"
+else
+    warn "dwm layout icons missing (should be  tile,  floating,  monocle)"
+fi
+# Monochrome palette (black↔white, no blue)
+if grep -q 'col_cyan\[\] = "#005577"' "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    warn "dwm still has blue #005577 — should be monochrome gray #777777"
+else
+    if grep -q 'col_cyan\[\] = "#777777"' "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then pass "dwm monochrome accent #777777 (was blue)"; else warn "dwm monochrome accent missing"; fi
+fi
+if grep -q "colour39\|colour136" "$REPO_ROOT/configs/tmux.conf" 2>/dev/null; then
+    warn "tmux still has blue/yellow colour39/136 — should be grayscale"
+else
+    if grep -q "colour255\|colour250" "$REPO_ROOT/configs/tmux.conf" 2>/dev/null; then pass "tmux monochrome (grayscale)"; else warn "tmux monochrome check ambiguous"; fi
+fi
+if grep -q "#3b82f6\|#1e1e2e" "$REPO_ROOT/configs/zed/settings.json" 2>/dev/null; then
+    warn "zed still has blue #3b82f6 or #1e1e2e — should be grayscale"
+else
+    if grep -q "#777777\|#1a1a1a" "$REPO_ROOT/configs/zed/settings.json" 2>/dev/null; then pass "zed monochrome (grayscale overrides)"; else warn "zed monochrome check ambiguous"; fi
+fi
+if grep -q "habamax" "$REPO_ROOT/configs/nvim/init.lua" 2>/dev/null && grep -q "#000000" "$REPO_ROOT/configs/nvim/init.lua" 2>/dev/null; then
+    pass "nvim monochrome (habamax + #000000 overrides)"
+else
+    warn "nvim monochrome not enforced"
+fi
+if have_file "$REPO_ROOT/configs/gtk-3.0/settings.ini" && grep -q "Adwaita-dark" "$REPO_ROOT/configs/gtk-3.0/settings.ini" 2>/dev/null; then
+    pass "gtk monochrome config present (Adwaita-dark)"
+else
+    warn "gtk monochrome config missing"
 fi
 # Locale UTF-8 check (btop requires UTF-8 — "No UTF-8 locale detected!" fix)
 if grep -q "UTF-8" /etc/locale.conf 2>/dev/null; then
@@ -298,6 +400,9 @@ fi
 for s in NetworkManager.service bluetooth.service postgresql.service; do
     if svc_enabled "$s"; then pass "$s enabled"; else warn "$s not enabled (fix: sudo systemctl enable $s)"; fi
 done
+if svc_enabled "touchegg.service"; then pass "touchegg.service enabled (gestures daemon)"; else warn "touchegg.service not enabled (fix: sudo systemctl enable --now touchegg.service)"; fi
+if systemctl is-active touchegg >/dev/null 2>&1 || pgrep -a touchegg 2>/dev/null | grep -q -- "--daemon"; then pass "touchegg daemon running"; else warn "touchegg daemon not running (gestures dead)"; fi
+if groups 2>/dev/null | grep -qw input || id -nG 2>/dev/null | grep -qw input; then pass "user in input group (for touchegg fallback)"; else info "user not in input group — system daemon handles gestures (enable touchegg.service)"; fi
 if systemctl is-active acpid >/dev/null 2>&1; then pass "acpid running"; else warn "acpid not currently running"; fi
 
 # --- 8. Live X session (skipped on TTY / SSH) --------------------------------
@@ -317,8 +422,9 @@ else
     fi
     if have_bin xprop; then
         rootname="$(xprop -root -notype WM_NAME 2>/dev/null | cut -d'"' -f2)"
+        # New bar uses icons (│, , 󰃠, , , ) + seconds; old bar used vol:/bat: – check both + escaped bytes from xprop
         case "$rootname" in
-            *vol:*|*bat:*|*cpu:*|*nw:*) pass "statusline alive: \"$rootname\"" ;;
+            *vol:*|*bat:*|*cpu:*|*nw:*|*%*|*Mon*|*Tue*|*Wed*|*Thu*|*Fri*|*Sat*|*Sun*|*│*|**|*\\302*) pass "statusline alive: \"$rootname\"" ;;
             "") warn "root window has no name — statusline not running" ;;
             *) warn "root window name has no statusline content: \"$rootname\"" ;;
         esac

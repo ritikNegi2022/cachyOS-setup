@@ -15,9 +15,9 @@ warn() { echo -e "${YELLOW}[warn]${NC} $*"; }
 err()  { echo -e "${RED}[err]${NC} $*" >&2; }
 
 if [[ $EUID -eq 0 ]]; then
-    SUDO=""
+    SUDO=()
 else
-    SUDO="sudo"
+    SUDO=(sudo)
 fi
 
 # ---------------------------------------------------------------------------
@@ -28,11 +28,15 @@ if command -v yay >/dev/null 2>&1; then
 else
     log "Installing yay (AUR helper)..."
 
-    $SUDO pacman -S --noconfirm --needed base-devel git
+    "${SUDO[@]}" pacman -S --noconfirm --needed base-devel git
 
+    if [[ $EUID -eq 0 ]]; then
+        warn "Cannot build yay as root — run as normal user (makepkg refuses root)"
+        exit 1
+    fi
+    tmpdir=$(mktemp -d /tmp/yay-build.XXXXXX)
     (
-        cd /tmp || exit 1
-        rm -rf yay
+        cd "$tmpdir" || exit 1
         git clone https://aur.archlinux.org/yay.git || {
             warn "Failed to clone yay - check internet connection"
             exit 1
@@ -43,6 +47,7 @@ else
             exit 1
         }
     )
+    rm -rf -- "$tmpdir"
 
     if command -v yay >/dev/null 2>&1; then
         log "yay installed: $(command -v yay)"
@@ -57,7 +62,7 @@ fi
 # ---------------------------------------------------------------------------
 log "Installing official repo packages..."
 
-$SUDO pacman -S --noconfirm --needed \
+"${SUDO[@]}" pacman -S --noconfirm --needed \
     xorg-server xorg-xinit xorg-xprop xorg-xauth \
     xorg-xsetroot xorg-xrandr xorg-xinput xorg-xmodmap \
     xdotool wmctrl libinput touchegg \
@@ -109,8 +114,8 @@ log "AUR packages installed."
 # ---------------------------------------------------------------------------
 log "Installing Python extras via pip (--user)..."
 
-if command -v pip >/dev/null 2>&1; then
-    pip install --user --break-system-packages \
+if command -v python3 >/dev/null 2>&1 && python3 -m pip --version >/dev/null 2>&1; then
+    python3 -m pip install --user --break-system-packages \
         mypy \
         2>/dev/null || warn "pip install failed — mypy unavailable (skip or use pyright)."
     log "Python pip extras installed."
@@ -125,11 +130,15 @@ log "Configuring npm global prefix (user-local, no sudo required)..."
 
 # Default npm prefix on Arch is /usr (root-owned) -> `npm install -g` fails with
 # EACCES for non-root users. Configure a user-writable prefix.
-if [[ "$(npm config get prefix 2>/dev/null)" == "/usr" ]]; then
-    mkdir -p "$HOME/.npm-global"
-    npm config set prefix "$HOME/.npm-global"
-    log "npm prefix set to $HOME/.npm-global"
-fi
+npm_prefix=$(npm config get prefix 2>/dev/null || echo "/usr")
+case "$npm_prefix" in
+    /usr|/usr/local)
+        mkdir -p "$HOME/.npm-global"
+        npm config set prefix "$HOME/.npm-global"
+        log "npm prefix $npm_prefix -> $HOME/.npm-global"
+        ;;
+esac
+unset npm_prefix
 
 # Ensure prefix bin is in PATH for this session and future shells
 export PATH="$HOME/.npm-global/bin:$PATH"

@@ -32,7 +32,7 @@ warn() { echo -e "${YELLOW}[warn]${NC} $*"; }
 err()  { echo -e "${RED}[err]${NC} $*" >&2; }
 info() { echo -e "${BLUE}[info]${NC} $*"; }
 
-THIS_DIR="$(cd "$(dirname "$0")" && pwd)"
+THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ---------------------------------------------------------------------------
 # Pre-flight
@@ -41,9 +41,9 @@ command -v pacman >/dev/null 2>&1 || { err "pacman not found — not Arch?"; exi
 
 if [[ $EUID -eq 0 ]]; then
     warn "Running as root."
-    SUDO=""
+    SUDO=()
 else
-    SUDO="sudo"
+    SUDO=(sudo)
 fi
 
 # ---------------------------------------------------------------------------
@@ -65,44 +65,56 @@ log "=== Step 4: Configure ly + dwm session + gestures ==="
 bash "$THIS_DIR/scripts/dwm-config.sh"
 
 log "=== Step 5: Install user configs ==="
-mkdir -p ~/.config/alacritty ~/.config/tmux ~/.config/nvim ~/.config/lf
-mkdir -p ~/.config/touchegg ~/.config/zed
+mkdir -p "$HOME/.config/alacritty" "$HOME/.config/tmux" "$HOME/.config/nvim" "$HOME/.config/lf"
+mkdir -p "$HOME/.config/touchegg" "$HOME/.config/zed"
 
-cp "$THIS_DIR/configs/alacritty.toml" ~/.config/alacritty/alacritty.toml
-cp "$THIS_DIR/configs/tmux.conf" ~/.config/tmux/tmux.conf
-cp "$THIS_DIR/configs/nvim/init.lua" ~/.config/nvim/init.lua
-cp "$THIS_DIR/configs/lf/lfrc" ~/.config/lf/lfrc
-cp "$THIS_DIR/configs/lf/preview.sh" ~/.config/lf/preview.sh
-chmod +x ~/.config/lf/preview.sh
+cp "$THIS_DIR/configs/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
+cp "$THIS_DIR/configs/tmux.conf" "$HOME/.config/tmux/tmux.conf"
+cp "$THIS_DIR/configs/nvim/init.lua" "$HOME/.config/nvim/init.lua"
+cp "$THIS_DIR/configs/lf/lfrc" "$HOME/.config/lf/lfrc"
+cp "$THIS_DIR/configs/lf/preview.sh" "$HOME/.config/lf/preview.sh"
+chmod +x "$HOME/.config/lf/preview.sh"
 
 # touchegg user config — the daemon (started per-session by dwm-session) reads
 # ~/.config/touchegg/touchegg.conf on Arch; /etc/touchegg/ is not used.
-cp "$THIS_DIR/configs/touchegg.conf" ~/.config/touchegg/touchegg.conf
+cp "$THIS_DIR/configs/touchegg.conf" "$HOME/.config/touchegg/touchegg.conf"
 # Super+Enter live fallback helper (until dwm rebuild)
-mkdir -p ~/.local/bin
+mkdir -p "$HOME/.local/bin"
 if [[ -f "$THIS_DIR/configs/dwm/super-enter-live.py" ]]; then
-    cp "$THIS_DIR/configs/dwm/super-enter-live.py" ~/.local/bin/super-enter-live.py
-    chmod +x ~/.local/bin/super-enter-live.py
+    cp "$THIS_DIR/configs/dwm/super-enter-live.py" "$HOME/.local/bin/super-enter-live.py"
+    chmod +x "$HOME/.local/bin/super-enter-live.py"
     # ensure pynput available for fallback
-    python3 -c "import pynput" 2>/dev/null || pip install --user --break-system-packages pynput 2>/dev/null || true
+    if command -v python3 >/dev/null 2>&1 && command -v pip >/dev/null 2>&1; then
+        python3 -c "import pynput" 2>/dev/null || pip install --user --break-system-packages pynput 2>/dev/null || true
+    fi
 fi
 
 # Zed editor configs
-cp "$THIS_DIR/configs/zed/settings.json" ~/.config/zed/settings.json
-cp "$THIS_DIR/configs/zed/keymap.json" ~/.config/zed/keymap.json
+cp "$THIS_DIR/configs/zed/settings.json" "$HOME/.config/zed/settings.json"
+cp "$THIS_DIR/configs/zed/keymap.json" "$HOME/.config/zed/keymap.json"
 
 # Keybindings doc — readable on new system + in repo
-mkdir -p ~/Documents ~/.local/share/cachyOS-setup
+mkdir -p "$HOME/Documents" "$HOME/.local/share/cachyOS-setup"
 if [[ -f "$THIS_DIR/docs/keybindings.md" ]]; then
-    cp "$THIS_DIR/docs/keybindings.md" ~/Documents/keybindings.md
-    cp "$THIS_DIR/docs/keybindings.md" ~/.local/share/cachyOS-setup/keybindings.md
-    $SUDO mkdir -p /usr/share/doc/cachyOS-setup
-    $SUDO cp "$THIS_DIR/docs/keybindings.md" /usr/share/doc/cachyOS-setup/keybindings.md
+    cp "$THIS_DIR/docs/keybindings.md" "$HOME/Documents/keybindings.md"
+    cp "$THIS_DIR/docs/keybindings.md" "$HOME/.local/share/cachyOS-setup/keybindings.md"
+    "${SUDO[@]}" mkdir -p /usr/share/doc/cachyOS-setup
+    "${SUDO[@]}" cp "$THIS_DIR/docs/keybindings.md" /usr/share/doc/cachyOS-setup/keybindings.md
     # also copy typo-named file if present (requested as keybingd.md)
-    [[ -f "$THIS_DIR/keybingd.md" ]] && cp "$THIS_DIR/keybingd.md" ~/Documents/keybingd.md 2>/dev/null || true
-    [[ -f "$THIS_DIR/keybingd.md" ]] && $SUDO cp "$THIS_DIR/keybingd.md" /usr/share/doc/cachyOS-setup/keybingd.md 2>/dev/null || true
+    if [[ -f "$THIS_DIR/keybingd.md" ]]; then
+        cp "$THIS_DIR/keybingd.md" "$HOME/Documents/keybingd.md" 2>/dev/null || true
+        "${SUDO[@]}" cp "$THIS_DIR/keybingd.md" /usr/share/doc/cachyOS-setup/keybingd.md 2>/dev/null || true
+    fi
     # also keep a copy in ~/ for quick `cat ~/keybindings.md`
-    cp "$THIS_DIR/docs/keybindings.md" ~/keybindings.md 2>/dev/null || true
+    cp "$THIS_DIR/docs/keybindings.md" "$HOME/keybindings.md" 2>/dev/null || true
+fi
+# Custom programs doc (reminder, super-clipboard, statusbar, etc.) — alongside keybindings
+if [[ -f "$THIS_DIR/docs/custom-programs.md" ]]; then
+    cp "$THIS_DIR/docs/custom-programs.md" "$HOME/Documents/custom-programs.md"
+    cp "$THIS_DIR/docs/custom-programs.md" "$HOME/.local/share/cachyOS-setup/custom-programs.md"
+    "${SUDO[@]}" mkdir -p /usr/share/doc/cachyOS-setup
+    "${SUDO[@]}" cp "$THIS_DIR/docs/custom-programs.md" /usr/share/doc/cachyOS-setup/custom-programs.md
+    cp "$THIS_DIR/docs/custom-programs.md" "$HOME/custom-programs.md" 2>/dev/null || true
 fi
 
 # Note: ly config + dwm session go to /etc/ly/ and /usr/share/xsessions/

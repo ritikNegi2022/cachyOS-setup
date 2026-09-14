@@ -10,11 +10,11 @@ static const int showbar = 0; /* statusline hidden by default — Super+F12 togg
 static const int topbar = 1;
 static const char *fonts[] = { "JetBrainsMono Nerd Font:size=10" };
 static const char dmenufont[] = "JetBrainsMono Nerd Font:size=10";
-static const char col_gray1[] = "#222222";
-static const char col_gray2[] = "#444444";
+static const char col_gray1[] = "#111111";
+static const char col_gray2[] = "#333333";
 static const char col_gray3[] = "#bbbbbb";
 static const char col_gray4[] = "#eeeeee";
-static const char col_cyan[] = "#005577";
+static const char col_cyan[] = "#777777"; /* monochrome accent — was blue, now gray */
 static const char *colors[][3] = {
     [SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
     [SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
@@ -38,9 +38,9 @@ static const int lockfullscreen = 1;
 static const int refreshrate = 120; /* dwm >= 6.5 */
 
 static const Layout layouts[] = {
-    { "[]=", tile },   /* first entry is default */
-    { "><>", NULL },   /* floating */
-    { "[M]", monocle },
+    { "", tile },   /* tile — icon  (fa-th, Nerd Font) was []= */
+    { "", NULL },   /* floating — icon  (fa-window-restore) was ><> */
+    { "", monocle }, /* monocle — icon  (fa-window-maximize) was [M] */
 };
 
 #define MODKEY Mod4Mask /* Super key */
