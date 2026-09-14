@@ -27,16 +27,10 @@ log "Installing additional packages..."
 
 # NOTE: no inline comments inside the continuation below — they would become
 # extra arguments and break pacman argument parsing under `set -e`.
-# Network: NetworkManager is the default backend (nmcli/nmtui).
-# impala (TUI for wifi, https://github.com/pythops/impala) is also installed
-# as an extra; it runs on top of iwd (pulled as a dependency). Do NOT enable
-# iwd.service by default — it conflicts with NetworkManager/wpa_supplicant.
-# Use either `nmtui` (NetworkManager) or stop NetworkManager + enable iwd
-# before running `impala`.
 "${SUDO[@]}" pacman -S --noconfirm --needed \
     alsa-lib alsa-utils alsa-firmware sof-firmware alsa-ucm-conf \
     pipewire pipewire-pulse pipewire-alsa wireplumber \
-    networkmanager impala iwd \
+    networkmanager \
     bluez bluez-utils \
     ttf-jetbrains-mono-nerd noto-fonts-emoji \
     mpv \
@@ -58,9 +52,6 @@ log "Enabling system services..."
 "${SUDO[@]}" systemctl enable bluetooth.service
 "${SUDO[@]}" systemctl enable NetworkManager.service
 "${SUDO[@]}" systemctl enable avahi-daemon.service 2>/dev/null || true
-
-# impala/iwd intentionally NOT enabled here — NetworkManager stays primary.
-# To use impala: sudo systemctl stop NetworkManager; sudo systemctl enable --now iwd; impala
 
 log "Services enabled: bluetooth, NetworkManager, avahi"
 
