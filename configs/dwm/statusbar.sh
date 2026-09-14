@@ -10,7 +10,7 @@ update() {
         *"MUTED"*) vol="󰝟 mute" ;;
         "")        vol="󰝟 -" ;;
         *) 
-            pct=$(printf '%s' "$vol_line" | awk '{printf "%d", $2 * 100}')
+            pct=$(LC_ALL=C printf '%s' "$vol_line" | awk '{printf "%d", $2 * 100}')
             if [ "$pct" -eq 0 ]; then icon=""
             elif [ "$pct" -lt 30 ]; then icon=""
             elif [ "$pct" -lt 70 ]; then icon=""
@@ -49,12 +49,12 @@ update() {
 
     # Network — SSID for wifi, "eth" for cable, "down" with no default route + icon
     net=" down"
-    iface=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
+    iface=$(ip route show default 2>/dev/null | awk '/default/ {for(i=1;i<=NF;i++) if($i=="dev") print $(i+1); exit}')
     if [ -n "$iface" ]; then
         case "$iface" in
-            wl*) ssid=$(nmcli -t -f GENERAL.CONNECTION dev show "$iface" 2>/dev/null | cut -d: -f2-)
+            wl*) ssid=$(nmcli -t -f NAME connection show --active 2>/dev/null | head -1 | cut -d: -f1); [ -z "$ssid" ] && ssid=$(nmcli -t -f GENERAL.CONNECTION dev show "$iface" 2>/dev/null | cut -d: -f2-)
                  [ -n "$ssid" ] && base="$ssid" || base="wifi"
-                 lvl=$(awk -v i="$iface" 'NR>2 {sub(":", "", $1); if ($1 == i) print $4 + 0}' /proc/net/wireless 2>/dev/null)
+                 lvl=$(awk -v i="$iface" 'NR>2 {sub(":", "", $1); if ($1 == i) {for(j=1;j<=NF;j++) if($j ~ /^-?[0-9]+\.?$/) lvl=$j; print lvl+0}}' /proc/net/wireless 2>/dev/null)
                  if [ -n "$lvl" ] && [ "$lvl" -gt -200 ] 2>/dev/null; then
                      pct=$(( (lvl + 100) * 2 ))
                      [ "$pct" -gt 100 ] && pct=100
@@ -101,7 +101,7 @@ update() {
     fi
 
     # CPU usage per core — via /proc/stat diff against /tmp cache
-    cpu_stat_prev="/tmp/.cpu_stat_prev"
+    cpu_stat_prev="${XDG_RUNTIME_DIR:-/tmp}/.cpu_stat_prev-${USER:-blank}"
     cpu_usage=""
     # read current: cpu-id total idle (idle includes iowait)
     cur_stat=$(awk '/^cpu[0-9]/ {print $1, $2+$3+$4+$5+$6+$7+$8, $5+$6}' /proc/stat 2>/dev/null)

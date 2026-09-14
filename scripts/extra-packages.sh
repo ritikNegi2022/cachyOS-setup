@@ -15,9 +15,9 @@ warn() { echo -e "${YELLOW}[warn]${NC} $*"; }
 err()  { echo -e "${RED}[err]${NC} $*" >&2; }
 
 if [[ $EUID -eq 0 ]]; then
-    SUDO=""
+    SUDO=()
 else
-    SUDO="sudo"
+    SUDO=(sudo)
 fi
 
 # ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ log "Installing additional packages..."
 
 # NOTE: no inline comments inside the continuation below — they would become
 # extra arguments and break pacman argument parsing under `set -e`.
-$SUDO pacman -S --noconfirm --needed \
+"${SUDO[@]}" pacman -S --noconfirm --needed \
     alsa-lib alsa-utils alsa-firmware sof-firmware alsa-ucm-conf \
     pipewire pipewire-pulse pipewire-alsa wireplumber \
     networkmanager \
@@ -38,6 +38,7 @@ $SUDO pacman -S --noconfirm --needed \
     jq sqlite \
     wget curl openssh \
     pass gnupg \
+    avahi \
     zip unzip \
     exfatprogs ntfs-3g
 
@@ -48,9 +49,9 @@ log "Additional packages installed."
 # ---------------------------------------------------------------------------
 log "Enabling system services..."
 
-$SUDO systemctl enable bluetooth.service
-$SUDO systemctl enable NetworkManager.service
-$SUDO systemctl enable avahi-daemon.service 2>/dev/null || true
+"${SUDO[@]}" systemctl enable bluetooth.service
+"${SUDO[@]}" systemctl enable NetworkManager.service
+"${SUDO[@]}" systemctl enable avahi-daemon.service 2>/dev/null || true
 
 log "Services enabled: bluetooth, NetworkManager, avahi"
 
@@ -59,7 +60,7 @@ log "Services enabled: bluetooth, NetworkManager, avahi"
 # ---------------------------------------------------------------------------
 log "Starting services..."
 
-$SUDO systemctl start bluetooth.service 2>/dev/null || true
-$SUDO systemctl start NetworkManager.service 2>/dev/null || true
+"${SUDO[@]}" systemctl start bluetooth.service 2>/dev/null || true
+"${SUDO[@]}" systemctl start NetworkManager.service 2>/dev/null || true
 
 log "Services started."

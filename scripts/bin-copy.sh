@@ -57,7 +57,7 @@ if [[ -f "$CKSUM_FILE" ]]; then
     else
         err "  CHECKSUM MISMATCH in $REPO_BIN_DIR — binaries are corrupted or stale"
         err "  Fix: re-clone the repo, or regenerate the manifest:"
-        err "    (cd $REPO_BIN_DIR && sha256sum ${REPO_BINARIES[*]} > checksums.sha256)"
+        err "    (cd $REPO_BIN_DIR && sha256sum "${REPO_BINARIES[@]}" > checksums.sha256)"
         exit 1
     fi
 else
@@ -153,6 +153,7 @@ else
     done
 
     # Also copy any other executables found
+    shopt -s nullglob 2>/dev/null || true
     for file in "$BIN_SRC"/*; do
         if [[ -f "$file" && -x "$file" ]]; then
             file_basename=$(basename "$file")
@@ -231,6 +232,24 @@ if [[ -x "$BIN_DST/keypress-sound" && -f "$UNIT_SRC" ]]; then
     fi
 else
     warn "keypress-sound binary or unit template missing — service not installed"
+fi
+
+# ---------------------------------------------------------------------------
+# 3.6 alacritty autostart: launch terminal at boot/login (user service)
+# ---------------------------------------------------------------------------
+ALAC_UNIT_SRC="$REPO_ROOT/configs/systemd/alacritty-autostart.service"
+ALAC_UNIT_DST="$HOME/.config/systemd/user/alacritty-autostart.service"
+if [[ -f "$ALAC_UNIT_SRC" ]]; then
+    mkdir -p "$HOME/.config/systemd/user"
+    cp "$ALAC_UNIT_SRC" "$ALAC_UNIT_DST"
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user daemon-reload 2>/dev/null || true
+        systemctl --user enable alacritty-autostart.service 2>/dev/null \
+            && log "alacritty-autostart: user service enabled (terminal at every login)" \
+            || warn "alacritty-autostart: could not enable (no session bus? enable manually: systemctl --user enable --now alacritty-autostart)"
+    fi
+else
+    warn "alacritty-autostart unit template missing — service not installed"
 fi
 
 # ---------------------------------------------------------------------------

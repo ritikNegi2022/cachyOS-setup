@@ -64,6 +64,7 @@ case "${1:-}" in
             echo "invalid number: $2 (have $total reminders)"
             exit 1
         fi
+        flock -n "$REM_FILE" 2>/dev/null || true
         sed -i "${2}d" "$REM_FILE"
         echo "removed reminder $2"
         ;;

@@ -8,6 +8,7 @@
 # Notifications go through dunst (already running in the session).
 
 REM_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dwm"
+LOCK_FILE="$REM_DIR/.reminders.lock"
 REM_FILE="$REM_DIR/reminders.txt"
 mkdir -p "$REM_DIR"
 touch "$REM_FILE"
@@ -35,6 +36,9 @@ while :; do
 
     # --- user reminders ---
     if [ -s "$REM_FILE" ]; then
+        # flock to avoid race with remind CLI
+        exec 9>"$LOCK_FILE" 2>/dev/null || true
+        flock -n 9 2>/dev/null || true
         n=0
         tmp="$REM_FILE.tmp"
         : > "$tmp"
@@ -54,6 +58,7 @@ while :; do
             fi
         done < "$REM_FILE"
         mv "$tmp" "$REM_FILE"
+        flock -u 9 2>/dev/null || true
     fi
 
     # sleep until the next minute boundary (accurate, low CPU)

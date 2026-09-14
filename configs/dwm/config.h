@@ -61,6 +61,7 @@ static const Layout layouts[] = {
 void shiftview(const Arg *arg);
 void shiftview(const Arg *arg) {
     Arg a;
+    if (!selmon) return;
     unsigned int cur = selmon->tagset[selmon->seltags];
     unsigned int n = LENGTH(tags);
     unsigned int shifted;
@@ -85,7 +86,6 @@ void togglefullscreen(const Arg *arg) {
 
 /* simple Hyprland-like group: toggle monocle + remember previous layout
    Group = show all windows on current tag tabbed (monocle), ungroup = tile */
-static int prev_layout_is_monocle = 0;
 void togglegroup(const Arg *arg) {
     if (selmon->lt[selmon->sellt] == &layouts[2]) { // monocle = grouped
         setlayout(&((Arg){.v = &layouts[0]})); // tile = ungrouped
@@ -153,7 +153,7 @@ static const Key keys[] = {
     { 0,                   XF86XK_Sleep,            spawn, {.v = sleepcmd } },
     { 0,                   XF86XK_ScreenSaver,      spawn, {.v = lockcmd } },
     { 0,                   XF86XK_Calculator,       spawn, {.v = calccmd } },
-    { 0,                   XF86XK_TouchpadToggle,   spawn, SHCMD("id=$(xinput list --id-only \"$(xinput list --name-only | grep -im1 -i touchpad)\" 2>/dev/null) && xinput toggle \"$id\"") },
+    { 0,                   XF86XK_TouchpadToggle,   spawn, SHCMD("id=$(xinput list --id-only \"$(xinput list --name-only 2>/dev/null | grep -im1 -i touchpad)\" 2>/dev/null); [ -n \"$id\" ] && xinput toggle \"$id\"") },
     { 0,                   XK_Print,                spawn, {.v = screenshotcmd } },
     { ShiftMask,           XK_Print,                spawn, {.v = selscreenshotcmd } },
     { MODKEY|ShiftMask,    XK_x,                    spawn, {.v = lockcmd } },   /* manual lock */

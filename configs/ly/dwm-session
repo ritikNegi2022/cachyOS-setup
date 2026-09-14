@@ -9,7 +9,7 @@ export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/.bin:/usr/local/bin:$P
 # Touchegg daemon — must run inside the user session for xdotool to work.
 # Arch's packaged /etc/xdg/autostart/touchegg.desktop does this too; the
 # pgrep guard avoids a second instance.
-pgrep -x touchegg >/dev/null 2>&1 || touchegg &
+pgrep -x touchegg >/dev/null 2>&1 || { nohup touchegg >/tmp/touchegg.log 2>&1 & disown; }
 
 # Pure black background — no wallpaper, no compositor needed
 xsetroot -solid "#000000"
@@ -23,19 +23,19 @@ fi
 [ -f "$HOME/.Xmodmap" ] && xmodmap "$HOME/.Xmodmap" 2>/dev/null || true
 
 # Natural scrolling: apply live for current session (Xorg conf handles next boot)
-for _id in $(xinput list --id-only 2>/dev/null); do
+while IFS= read -r _id; do
     xinput list-props "$_id" 2>/dev/null | grep -q "Natural Scrolling Enabled (" && \
         xinput set-prop "$_id" "libinput Natural Scrolling Enabled" 1 2>/dev/null || true
-done; unset _id
+done < <(xinput list --id-only 2>/dev/null); unset _id
 
 # Notifications (dunst — started once per session)
-pgrep -x dunst >/dev/null 2>&1 || dunst &
+pgrep -x dunst >/dev/null 2>&1 || { nohup dunst >/tmp/dunst.log 2>&1 & disown; }
 
 # Status bar (volume / brightness / battery / time → dwm's bar via xsetroot)
-/etc/ly/dwm-statusbar &
+{ nohup /etc/ly/dwm-statusbar >/tmp/statusbar.log 2>&1 & disown; } || /etc/ly/dwm-statusbar &
 
 # Reminder daemon: hourly time pings + user reminders (see `remind` CLI)
-/etc/ly/reminderd &
+{ nohup /etc/ly/reminderd >/tmp/reminderd.log 2>&1 & disown; } || /etc/ly/reminderd &
 
 # Live fallback for Super+Enter -> terminal until dwm is rebuilt with new config.h
 # (config.h:90 now binds both Super+Enter and Super+Shift+Enter to termcmd; old binary only had Shift)

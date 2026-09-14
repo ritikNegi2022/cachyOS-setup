@@ -14,9 +14,9 @@ warn() { echo -e "${YELLOW}[warn]${NC} $*"; }
 err()  { echo -e "${RED}[err]${NC} $*" >&2; }
 
 if [[ $EUID -eq 0 ]]; then
-    SUDO=""
+    SUDO=()
 else
-    SUDO="sudo"
+    SUDO=(sudo)
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -26,36 +26,36 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # ---------------------------------------------------------------------------
 log "Installing ly config and dwm session file..."
 
-$SUDO mkdir -p /etc/ly
-$SUDO cp "$REPO_ROOT/configs/ly/config.ini" /etc/ly/config.ini
-$SUDO install -m 755 "$REPO_ROOT/configs/ly/login.sh" /etc/ly/login.sh
+"${SUDO[@]}" mkdir -p /etc/ly
+"${SUDO[@]}" cp "$REPO_ROOT/configs/ly/config.ini" /etc/ly/config.ini
+"${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/ly/login.sh" /etc/ly/login.sh
 
 # dwm session entry — ly discovers X11 sessions in /usr/share/xsessions/
-$SUDO cp "$REPO_ROOT/configs/ly/dwm.desktop" /usr/share/xsessions/dwm.desktop
-$SUDO install -m 755 "$REPO_ROOT/configs/ly/dwm-session" /etc/ly/dwm-session
+"${SUDO[@]}" cp "$REPO_ROOT/configs/ly/dwm.desktop" /usr/share/xsessions/dwm.desktop
+"${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/ly/dwm-session" /etc/ly/dwm-session
 
 # Statusline script (dwm-session launches it; writes root window name)
-$SUDO install -m 755 "$REPO_ROOT/configs/dwm/statusbar.sh" /etc/ly/dwm-statusbar
+"${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/dwm/statusbar.sh" /etc/ly/dwm-statusbar
 
 # Session key remaps: ESC<->CapsLock, Alt<->Ctrl (called by dwm-session)
-$SUDO install -m 755 "$REPO_ROOT/configs/dwm/keyswap.sh" /etc/ly/keyswap.sh
+"${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/dwm/keyswap.sh" /etc/ly/keyswap.sh
 
 # Reminder daemon (hourly time pings + user reminders) + remind CLI
-$SUDO install -m 755 "$REPO_ROOT/configs/dwm/reminderd" /etc/ly/reminderd
-$SUDO install -m 755 "$REPO_ROOT/configs/dwm/remind" /usr/local/bin/remind
+"${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/dwm/reminderd" /etc/ly/reminderd
+"${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/dwm/remind" /usr/local/bin/remind
 
 # Power button -> lock (slock) instead of shutdown, via acpid + logind override
-$SUDO pacman -S --noconfirm --needed acpid
-$SUDO install -m 755 "$REPO_ROOT/configs/acpi/power-btn.sh" /etc/acpi/power-btn.sh
-$SUDO install -m 644 "$REPO_ROOT/configs/acpi/power" /etc/acpi/events/power
-$SUDO systemctl enable --now acpid.service
+"${SUDO[@]}" pacman -S --noconfirm --needed acpid
+"${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/acpi/power-btn.sh" /etc/acpi/power-btn.sh
+"${SUDO[@]}" install -m 644 "$REPO_ROOT/configs/acpi/power" /etc/acpi/events/power
+"${SUDO[@]}" systemctl enable --now acpid.service
 # Inhibit systemd-logind's default poweroff so acpid can handle it
-$SUDO mkdir -p /etc/systemd/logind.conf.d
+"${SUDO[@]}" mkdir -p /etc/systemd/logind.conf.d
 if [[ -f "$REPO_ROOT/configs/systemd/logind.conf.d/10-powerkey.conf" ]]; then
-    $SUDO cp "$REPO_ROOT/configs/systemd/logind.conf.d/10-powerkey.conf" /etc/systemd/logind.conf.d/10-powerkey.conf
+    "${SUDO[@]}" cp "$REPO_ROOT/configs/systemd/logind.conf.d/10-powerkey.conf" /etc/systemd/logind.conf.d/10-powerkey.conf
     log "Installed /etc/systemd/logind.conf.d/10-powerkey.conf (HandlePowerKey=ignore → acpid → slock)"
     # Reload logind without killing session (HUP), fallback to restart
-    $SUDO kill -HUP $(pidof systemd-logind 2>/dev/null | head -1) 2>/dev/null || $SUDO systemctl kill --kill-who=main --signal=HUP systemd-logind 2>/dev/null || true
+    if pid=$(pidof systemd-logind 2>/dev/null | head -1); then [ -n "$pid" ] && "${SUDO[@]}" kill -HUP "$pid" 2>/dev/null || "${SUDO[@]}" systemctl kill --kill-who=main --signal=HUP systemd-logind 2>/dev/null || true; fi
 fi
 log "Power button now locks the screen (slock) — shutdown via CLI only"
 
@@ -65,26 +65,26 @@ log "Power button now locks the screen (slock) — shutdown via CLI only"
 log "Enabling ly as display manager (ly@tty1)..."
 
 # Disable any existing display manager alias and conflicting getty
-$SUDO systemctl disable display-manager.service 2>/dev/null || true
-$SUDO systemctl disable getty@tty1.service 2>/dev/null || true
+"${SUDO[@]}" systemctl disable display-manager.service 2>/dev/null || true
+"${SUDO[@]}" systemctl disable getty@tty1.service 2>/dev/null || true
 
 # ly package ships ly@.service (template) — enable the tty1 instance
-$SUDO systemctl enable ly@tty1.service
+"${SUDO[@]}" systemctl enable ly@tty1.service
 
 # Default boot target: graphical (so ly actually starts on boot)
-$SUDO systemctl set-default graphical.target
+"${SUDO[@]}" systemctl set-default graphical.target
 
 # ---------------------------------------------------------------------------
 # 3. Natural (inverted) scrolling — touchpad + mouse wheel (libinput)
 # ---------------------------------------------------------------------------
 log "Installing natural (inverted) scrolling Xorg config..."
-$SUDO mkdir -p /etc/X11/xorg.conf.d
+"${SUDO[@]}" mkdir -p /etc/X11/xorg.conf.d
 if [[ -f "$REPO_ROOT/configs/xorg/30-natural-scroll.conf" ]]; then
-    $SUDO cp "$REPO_ROOT/configs/xorg/30-natural-scroll.conf" /etc/X11/xorg.conf.d/30-natural-scroll.conf
+    "${SUDO[@]}" cp "$REPO_ROOT/configs/xorg/30-natural-scroll.conf" /etc/X11/xorg.conf.d/30-natural-scroll.conf
     log "Installed /etc/X11/xorg.conf.d/30-natural-scroll.conf"
     # Apply live for current session via xinput (no reboot needed)
     if command -v xinput >/dev/null 2>&1 && [[ -n "${DISPLAY:-}" ]]; then
-        for id in $(xinput list --id-only 2>/dev/null); do
+        xinput list --id-only 2>/dev/null | while IFS= read -r id; do
             # libinput Natural Scrolling Enabled is prop 323-ish; set if present
             if xinput list-props "$id" 2>/dev/null | grep -q "Natural Scrolling Enabled ("; then
                 xinput set-prop "$id" "libinput Natural Scrolling Enabled" 1 2>/dev/null || true
@@ -103,7 +103,7 @@ fi
 # ---------------------------------------------------------------------------
 log "Installing Super clipboard (Super+C/X/V everywhere, no SIGINT in terminal)..."
 if [[ -f "$REPO_ROOT/configs/dwm/super-clipboard.sh" ]]; then
-    $SUDO install -m 755 "$REPO_ROOT/configs/dwm/super-clipboard.sh" /usr/local/bin/super-clipboard
+    "${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/dwm/super-clipboard.sh" /usr/local/bin/super-clipboard
     mkdir -p "$HOME/.local/bin"
     install -m 755 "$REPO_ROOT/configs/dwm/super-clipboard.sh" "$HOME/.local/bin/super-clipboard" 2>/dev/null || true
     log "Installed /usr/local/bin/super-clipboard"
@@ -125,10 +125,10 @@ fi
 #    ~/.config/touchegg/touchegg.conf (installed in setup.sh Step 5).
 # ---------------------------------------------------------------------------
 log "Touchegg: enabling system daemon + user config..."
-$SUDO systemctl enable --now touchegg.service 2>&1 | tail -n 5 || warn "touchegg.service enable failed (try manually: sudo systemctl enable --now touchegg.service)"
+"${SUDO[@]}" systemctl enable --now touchegg.service 2>&1 | tail -n 5 || warn "touchegg.service enable failed (try manually: sudo systemctl enable --now touchegg.service)"
 # Fallback: ensure user in input group for user-daemon mode (if system daemon disabled)
 if ! groups 2>/dev/null | grep -qw input; then
-    $SUDO usermod -aG input "$USER" 2>/dev/null && log "Added $USER to input group (re-login needed for user daemon fallback)" || true
+    "${SUDO[@]}" usermod -aG input "$USER" 2>/dev/null && log "Added $USER to input group (re-login needed for user daemon fallback)" || true
 fi
 # Ensure user config exists for live session (setup.sh also does)
 mkdir -p ~/.config/touchegg 2>/dev/null || true

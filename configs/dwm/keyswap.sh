@@ -1,4 +1,6 @@
 #!/bin/sh
+command -v xmodmap >/dev/null 2>&1 || { echo "xmodmap not found" >&2; exit 1; }
+[ -n "${DISPLAY:-}" ] || { echo "No DISPLAY, skipping xmodmap" >&2; exit 0; }
 # Session-wide key remaps (installed to /etc/ly/keyswap.sh, called by dwm-session)
 # 1. ESC <-> CapsLock
 # 2. Alt <-> Ctrl (both sides)

@@ -16,43 +16,43 @@ for loc in "en_IN.UTF-8" "en_US.UTF-8"; do
     # locale.gen uses either "en_IN UTF-8" or "en_US.UTF-8 UTF-8"
     # Try both forms: uncomment if commented
     if grep -q "^# *${loc} UTF-8" /etc/locale.gen 2>/dev/null; then
-        $SUDO sed -i "s/^# *${loc} UTF-8/${loc} UTF-8/" /etc/locale.gen 2>/dev/null || warn "Need sudo to uncomment ${loc} in /etc/locale.gen"
+        "${SUDO[@]}" sed -i "s/^# *${loc} UTF-8/${loc} UTF-8/" /etc/locale.gen 2>/dev/null || warn "Need sudo to uncomment ${loc} in /etc/locale.gen"
         log "Uncommented ${loc} in /etc/locale.gen"
     elif grep -q "^# *${loc%.*} UTF-8" /etc/locale.gen 2>/dev/null && [[ "$loc" == "en_IN.UTF-8" ]]; then
         # en_IN is listed as "en_IN UTF-8" (without .UTF-8)
-        $SUDO sed -i "s/^# *en_IN UTF-8/en_IN UTF-8/" /etc/locale.gen 2>/dev/null || warn "Need sudo to uncomment en_IN in /etc/locale.gen"
+        "${SUDO[@]}" sed -i "s/^# *en_IN UTF-8/en_IN UTF-8/" /etc/locale.gen 2>/dev/null || warn "Need sudo to uncomment en_IN in /etc/locale.gen"
         log "Uncommented en_IN in /etc/locale.gen"
     fi
 done
 # Also handle "en_IN UTF-8" form directly
 if grep -q "^#en_IN UTF-8" /etc/locale.gen 2>/dev/null; then
-    $SUDO sed -i "s/^#en_IN UTF-8/en_IN UTF-8/" /etc/locale.gen 2>/dev/null || warn "Need sudo for locale.gen"
+    "${SUDO[@]}" sed -i "s/^#en_IN UTF-8/en_IN UTF-8/" /etc/locale.gen 2>/dev/null || warn "Need sudo for locale.gen"
     log "Uncommented en_IN UTF-8"
 fi
 # Ensure at least one UTF-8 locale is enabled, else btop fails
 if ! grep -q "^en_IN.*UTF-8" /etc/locale.gen 2>/dev/null || ! grep -q "^en_US.UTF-8" /etc/locale.gen 2>/dev/null; then
     warn "locale.gen missing UTF-8 entries — adding en_US.UTF-8"
-    echo "en_US.UTF-8 UTF-8" | $SUDO tee -a /etc/locale.gen >/dev/null 2>&1 || warn "Need sudo to write /etc/locale.gen"
+    echo "en_US.UTF-8 UTF-8" | "${SUDO[@]}" tee -a /etc/locale.gen >/dev/null 2>&1 || warn "Need sudo to write /etc/locale.gen"
 fi
 
 # 2. Generate locales if needed
 if ! locale -a 2>/dev/null | grep -qi "en_IN.utf"; then
     log "Generating locales via locale-gen..."
-    $SUDO locale-gen 2>&1 | tail -n 20 || warn "locale-gen failed (need sudo) — run manually: sudo locale-gen"
+    "${SUDO[@]}" locale-gen 2>&1 | tail -n 20 || warn "locale-gen failed (need sudo) — run manually: sudo locale-gen"
 else
     log "UTF-8 locales already generated: $(locale -a | grep -i utf | tr '\n' ' ')"
 fi
 
 # 3. Install /etc/locale.conf (UTF-8)
 if [[ -f "$REPO_ROOT/configs/locale/locale.conf" ]]; then
-    if $SUDO cp "$REPO_ROOT/configs/locale/locale.conf" /etc/locale.conf 2>/dev/null; then
+    if "${SUDO[@]}" cp "$REPO_ROOT/configs/locale/locale.conf" /etc/locale.conf 2>/dev/null; then
         log "Installed /etc/locale.conf (LANG=en_IN.UTF-8)"
     else
         warn "Need sudo to write /etc/locale.conf — run: sudo cp $REPO_ROOT/configs/locale/locale.conf /etc/locale.conf"
     fi
 elif command -v localectl >/dev/null 2>&1; then
-    $SUDO localectl set-locale LANG=en_IN.UTF-8 LC_CTYPE=en_IN.UTF-8 2>/dev/null || {
-        $SUDO bash -c 'cat > /etc/locale.conf <<EOF
+    "${SUDO[@]}" localectl set-locale LANG=en_IN.UTF-8 LC_CTYPE=en_IN.UTF-8 2>/dev/null || {
+        "${SUDO[@]}" bash -c 'cat > /etc/locale.conf <<EOF
 LANG=en_IN.UTF-8
 LC_CTYPE=en_IN.UTF-8
 EOF' 2>/dev/null || warn "Need sudo to set locale"
@@ -63,7 +63,7 @@ fi
 # Also ensure localectl reports UTF-8
 if command -v localectl >/dev/null 2>&1; then
     # localectl may need explicit LANG with .UTF-8
-    $SUDO localectl set-locale LANG=en_IN.UTF-8 2>/dev/null || true
+    "${SUDO[@]}" localectl set-locale LANG=en_IN.UTF-8 2>/dev/null || true
 fi
 
 # 4. Ensure shell rc exports UTF-8 for future sessions (idempotent)

@@ -1,0 +1,29 @@
+# systemd USER service: alacritty autostart at boot/login
+# Installed to ~/.config/systemd/user/ by scripts/bin-copy.sh (or setup.sh).
+# Starts alacritty automatically when graphical-session.target starts (i.e. after ly login → dwm).
+# This is the systemd-correct way to get "launch terminal as soon as system boot" for a GUI app:
+# - At boot (before ly login) there is no X/Wayland, so a system service would fail.
+# - This user service is PartOf graphical-session.target, which dwm-session starts.
+#   So it launches on every graphical login, which is effectively "as soon as system boot + login".
+#
+# Enable: systemctl --user enable alacritty-autostart.service
+# Disable: systemctl --user disable alacritty-autostart.service
+# Logs: journalctl --user -u alacritty-autostart -e
+# Fallback: configs/ly/dwm-session also does `alacritty &` if this service is not enabled.
+
+[Unit]
+Description=Alacritty terminal autostart (boot/login)
+PartOf=graphical-session.target
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/alacritty
+Restart=no
+# If you want it to restart when you close it, change to Restart=on-failure
+# Restart=on-failure
+# RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

@@ -28,9 +28,9 @@ warn() { echo -e "${YELLOW}[warn]${NC} $*"; }
 err()  { echo -e "${RED}[err]${NC} $*" >&2; }
 
 if [[ $EUID -eq 0 ]]; then
-    SUDO=""
+    SUDO=()
 else
-    SUDO="sudo"
+    SUDO=(sudo)
 fi
 
 AUR_PKG="pgadmin4-desktop"

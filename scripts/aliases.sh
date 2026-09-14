@@ -69,7 +69,7 @@ tm() {
 # Quick server start (edit as needed)
 serve() {
     local port="${1:-8080}"
-    python -m http.server "$port" 2>/dev/null || php -S localhost:"$port" 2>/dev/null || node -e "require('http').createServer((_,r)=>r.end('OK')).listen($port)" &
+    (python -m http.server "$port" 2>/dev/null || php -S localhost:"$port" 2>/dev/null || node -e "require('http').createServer((_,r)=>r.end('OK')).listen($port)") &
     echo "Server running on http://localhost:$port"
 }
 

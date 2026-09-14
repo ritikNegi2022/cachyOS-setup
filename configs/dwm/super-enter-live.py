@@ -12,14 +12,27 @@ except Exception as e:
 
 # Track modifiers
 pressed = set()
+last_spawn = 0
 
 def spawn_term():
+    global last_spawn
+    import time
+    now = time.time()
+    if now - last_spawn < 0.3:
+        return
+    last_spawn = now
     try:
         subprocess.Popen(["alacritty"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
         print(f"spawn failed: {e}", file=sys.stderr)
 
 def spawn_fullscreen():
+    global last_spawn
+    import time
+    now = time.time()
+    if now - last_spawn < 0.3:
+        return
+    last_spawn = now
     try:
         # Try wmctrl fullscreen toggle, fallback to xdotool
         subprocess.run(["wmctrl", "-r", ":ACTIVE:", "-b", "toggle,fullscreen"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -30,6 +43,12 @@ def spawn_fullscreen():
         except: pass
 
 def spawn_group():
+    global last_spawn
+    import time
+    now = time.time()
+    if now - last_spawn < 0.3:
+        return
+    last_spawn = now
     try:
         # Hyprland-like group: toggle monocle (tabbed) vs tile
         subprocess.run(["xdotool", "key", "super+m"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

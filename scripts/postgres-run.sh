@@ -20,9 +20,9 @@ PG_DATA_DIR="${PG_DATA_DIR:-/var/lib/postgres/data}"
 PG_PORT="${PG_PORT:-5432}"
 
 if [[ $EUID -eq 0 ]]; then
-    SUDO=""
+    SUDO=()
 else
-    SUDO="sudo"
+    SUDO=(sudo)
 fi
 
 print_header() {
@@ -96,7 +96,7 @@ do_start() {
     require_initialized
     info "Data directory: $PG_DATA_DIR"
     info "Port: $PG_PORT"
-    $SUDO systemctl start postgresql
+    "${SUDO[@]}" systemctl start postgresql
     if check_postgres_running; then
         log "PostgreSQL started successfully"
         info "Listening on port $PG_PORT"
@@ -112,7 +112,7 @@ do_stop() {
         log "PostgreSQL is not running"
         return 0
     fi
-    $SUDO systemctl stop postgresql
+    "${SUDO[@]}" systemctl stop postgresql
     if ! check_postgres_running; then
         log "PostgreSQL stopped successfully"
     else
@@ -151,9 +151,9 @@ do_logs() {
     info "PostgreSQL logs (journalctl):"
     echo ""
     if $follow; then
-        $SUDO journalctl -u postgresql -f --no-pager
+        "${SUDO[@]}" journalctl -u postgresql -f --no-pager
     else
-        $SUDO journalctl -u postgresql -n 50 --no-pager
+        "${SUDO[@]}" journalctl -u postgresql -n 50 --no-pager
     fi
 }
 
@@ -169,11 +169,11 @@ do_create_db() {
         err "Usage: $(basename "$0") create-db <database_name>"
         exit 1
     fi
-    if $SUDO -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='$db_name'" 2>/dev/null | grep -q 1; then
+    if "${SUDO[@]}" -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='$db_name'" 2>/dev/null | grep -q 1; then
         warn "Database '$db_name' already exists"
         return 0
     fi
-    if $SUDO -u postgres createdb -O "$PG_USER" "$db_name"; then
+    if "${SUDO[@]}" -u postgres createdb -O "$PG_USER" "$db_name"; then
         log "Database '$db_name' created successfully"
     else
         err "Failed to create database '$db_name'"
@@ -182,7 +182,7 @@ do_create_db() {
 }
 
 do_list_dbs() {
-    $SUDO -u postgres psql -c "\l"
+    "${SUDO[@]}" -u postgres psql -c "\l"
 }
 
 do_backup() {
@@ -227,19 +227,19 @@ do_restore() {
 
 do_enable() {
     print_header
-    $SUDO systemctl enable postgresql.service
+    "${SUDO[@]}" systemctl enable postgresql.service
     log "PostgreSQL will start automatically on boot"
 }
 
 do_disable() {
     print_header
-    $SUDO systemctl disable postgresql.service
+    "${SUDO[@]}" systemctl disable postgresql.service
     log "PostgreSQL will NOT start automatically on boot"
 }
 
 do_shell() {
     print_header
-    exec $SUDO -u postgres psql
+    exec "${SUDO[@]}" -u postgres psql
 }
 
 # ---------------------------------------------------------------------------

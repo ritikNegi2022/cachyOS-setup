@@ -12,7 +12,7 @@ if [ ! -f "$file" ]; then
     exit 1
 fi
 
-size=$(du -h "$file" | cut -f1)
+size=$(du -h --apparent-size "$file" 2>/dev/null | awk '{print $1}')
 mtime=$(stat -c %y "$file" | cut -d. -f1)
 ftype=$(file -b --mime-type "$file" 2>/dev/null || echo "unknown")
 

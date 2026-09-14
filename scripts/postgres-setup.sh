@@ -14,9 +14,9 @@ warn() { echo -e "${YELLOW}[warn]${NC} $*"; }
 err()  { echo -e "${RED}[err]${NC} $*" >&2; }
 
 if [[ $EUID -eq 0 ]]; then
-    SUDO=""
+    SUDO=()
 else
-    SUDO="sudo"
+    SUDO=(sudo)
 fi
 
 PG_DATA_DIR="/var/lib/postgres/data"
@@ -45,7 +45,7 @@ fi
 # ---------------------------------------------------------------------------
 if ! command -v initdb >/dev/null 2>&1; then
     log "Installing PostgreSQL server..."
-    $SUDO pacman -S --noconfirm --needed postgresql postgresql-libs
+    "${SUDO[@]}" pacman -S --noconfirm --needed postgresql postgresql-libs
     log "PostgreSQL installed"
 fi
 
@@ -61,15 +61,15 @@ else
 
     # Ensure postgres user exists (Arch creates it via the package; belt + suspenders)
     if ! id -u postgres >/dev/null 2>&1; then
-        $SUDO useradd -r -M -d /var/lib/postgres -s /bin/bash postgres
+        "${SUDO[@]}" useradd -r -M -d /var/lib/postgres -s /bin/bash postgres
     fi
 
-    $SUDO mkdir -p "$PG_DATA_DIR"
-    $SUDO chown postgres:postgres "$PG_DATA_DIR"
-    $SUDO chmod 700 "$PG_DATA_DIR"
+    "${SUDO[@]}" mkdir -p "$PG_DATA_DIR"
+    "${SUDO[@]}" chown postgres:postgres "$PG_DATA_DIR"
+    "${SUDO[@]}" chmod 700 "$PG_DATA_DIR"
 
     log "Running initdb as postgres user..."
-    $SUDO -u postgres "$PG_BIN/initdb" -D "$PG_DATA_DIR"
+    "${SUDO[@]}" -u postgres "$PG_BIN/initdb" -D "$PG_DATA_DIR"
 
     log "Database cluster initialized"
 fi
@@ -82,12 +82,12 @@ log "Configuring pg_hba.conf for local connections..."
 PG_HBA="$PG_DATA_DIR/pg_hba.conf"
 
 if [[ -f "$PG_HBA" && ! -f "$PG_HBA.orig" ]]; then
-    $SUDO cp "$PG_HBA" "$PG_HBA.orig"
+    "${SUDO[@]}" cp "$PG_HBA" "$PG_HBA.orig"
     log "Backed up pg_hba.conf"
 fi
 
-if [[ -f "$PG_HBA" ]] && ! $SUDO grep -q "cachyOS-setup additions" "$PG_HBA"; then
-    $SUDO tee -a "$PG_HBA" >/dev/null << 'EOF'
+if [[ -f "$PG_HBA" ]] && ! "${SUDO[@]}" grep -q "cachyOS-setup additions" "$PG_HBA"; then
+    "${SUDO[@]}" tee -a "$PG_HBA" >/dev/null << 'EOF'
 
 # === cachyOS-setup additions ===
 # Local socket connections (dev only - trust auth)
@@ -110,8 +110,8 @@ create_db() {
     local db_name="$1"
     local db_owner="${2:-$PG_USER}"
 
-    if ! $SUDO -u postgres "$PG_BIN/psql" -tAc "SELECT 1 FROM pg_database WHERE datname='$db_name'" 2>/dev/null | grep -q 1; then
-        if $SUDO -u postgres "$PG_BIN/createdb" -O "$db_owner" "$db_name" 2>/dev/null; then
+    if ! "${SUDO[@]}" -u postgres "$PG_BIN/psql" -tAc "SELECT 1 FROM pg_database WHERE datname='$db_name'" 2>/dev/null | grep -q 1; then
+        if "${SUDO[@]}" -u postgres "$PG_BIN/createdb" -O "$db_owner" "$db_name" 2>/dev/null; then
             log "  Created database '$db_name'"
         else
             warn "  Could not create database '$db_name' (skipping)"
@@ -121,19 +121,23 @@ create_db() {
     fi
 }
 
-create_db "api_watch"
-create_db "flight_booking"
-create_db "tourscanner-db-test"   # hyphens are fine for createdb when quoted
-
-log "Default databases configured"
+log "Default databases configured (will create after service start)"
 
 # ---------------------------------------------------------------------------
 # 6. Enable + start service
 # ---------------------------------------------------------------------------
 log "Configuring PostgreSQL systemd service..."
 
-$SUDO systemctl enable postgresql.service
-$SUDO systemctl start postgresql.service 2>/dev/null || true
+"${SUDO[@]}" systemctl enable postgresql.service
+"${SUDO[@]}" systemctl start postgresql.service 2>/dev/null || true
+
+log "PostgreSQL service enabled and started"
+
+# Now create DBs (needs running server)
+create_db "api_watch"
+create_db "flight_booking"
+create_db "tourscanner-db-test"
+log "Databases created (if server running)" 2>/dev/null || true
 
 log "PostgreSQL service enabled and started"
 

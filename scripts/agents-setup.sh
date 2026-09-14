@@ -34,7 +34,7 @@ else
         if [[ $EUID -ne 0 ]]; then
             SUDO="sudo"
         fi
-        $SUDO pacman -S --noconfirm --needed nodejs npm
+        "${SUDO[@]}" pacman -S --noconfirm --needed nodejs npm
         log "Node.js installed: $(node --version)"
     else
         err "Cannot install Node.js automatically"

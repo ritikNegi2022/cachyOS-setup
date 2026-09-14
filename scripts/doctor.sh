@@ -93,11 +93,11 @@ if have_file /etc/X11/xorg.conf.d/30-natural-scroll.conf; then
     # live check: xinput natural scrolling enabled?
     if [ -n "${DISPLAY:-}" ] && command -v xinput >/dev/null 2>&1; then
         nat_on=0; nat_off=0
-        for _id in $(xinput list --id-only 2>/dev/null); do
+        while IFS= read -r _id; do
             if xinput list-props "$_id" 2>/dev/null | grep -q "Natural Scrolling Enabled"; then
-                if xinput list-props "$_id" 2>/dev/null | grep -q "Natural Scrolling Enabled.*1"; then nat_on=$((nat_on+1)); else nat_off=$((nat_off+1)); fi
+                if xinput list-props "$_id" 2>/dev/null | grep -qE "Natural Scrolling Enabled \(.*\):\s+1$"; then nat_on=$((nat_on+1)); else nat_off=$((nat_off+1)); fi
             fi
-        done
+        done < <(xinput list --id-only 2>/dev/null)
         if [ "$nat_on" -gt 0 ] && [ "$nat_off" -eq 0 ]; then pass "natural scrolling live (xinput enabled)"; else warn "natural scrolling Xorg installed but live xinput not all enabled ($nat_on on, $nat_off off)"; fi
         unset _id
     fi
@@ -290,7 +290,19 @@ if have_file "$UNIT_FILE"; then
     fi
 else
     info "keypress-sound user unit not installed (copied by scripts/bin-copy.sh when the binary exists)"
-fi
+    fi
+    # alacritty autostart at boot/login
+    ALAC_UNIT2="$HOME/.config/systemd/user/alacritty-autostart.service"
+    if have_file "$ALAC_UNIT2"; then
+        pass "file: $ALAC_UNIT2"
+        if command -v systemctl >/dev/null 2>&1 && [ "$(systemctl --user is-enabled alacritty-autostart.service 2>/dev/null)" = "enabled" ]; then
+            pass "alacritty-autostart.service enabled (terminal at boot)"
+        else
+            warn "alacritty-autostart.service not enabled (fix: systemctl --user enable alacritty-autostart.service)"
+        fi
+    else
+        warn "alacritty-autostart user unit not installed (should be in configs/systemd/alacritty-autostart.service)"
+    fi
 
 # --- 5. dwm binary (custom config embedded?) ---------------------------------
 section "5. dwm binary"
@@ -401,7 +413,7 @@ for s in NetworkManager.service bluetooth.service postgresql.service; do
     if svc_enabled "$s"; then pass "$s enabled"; else warn "$s not enabled (fix: sudo systemctl enable $s)"; fi
 done
 if svc_enabled "touchegg.service"; then pass "touchegg.service enabled (gestures daemon)"; else warn "touchegg.service not enabled (fix: sudo systemctl enable --now touchegg.service)"; fi
-if systemctl is-active touchegg >/dev/null 2>&1 || pgrep -a touchegg 2>/dev/null | grep -q -- "--daemon"; then pass "touchegg daemon running"; else warn "touchegg daemon not running (gestures dead)"; fi
+if systemctl is-active touchegg.service >/dev/null 2>&1 || pgrep -a touchegg 2>/dev/null | grep -q -- "--daemon"; then pass "touchegg daemon running"; else warn "touchegg daemon not running (gestures dead)"; fi
 if groups 2>/dev/null | grep -qw input || id -nG 2>/dev/null | grep -qw input; then pass "user in input group (for touchegg fallback)"; else info "user not in input group — system daemon handles gestures (enable touchegg.service)"; fi
 if systemctl is-active acpid >/dev/null 2>&1; then pass "acpid running"; else warn "acpid not currently running"; fi
 
@@ -412,7 +424,7 @@ if [ -z "${DISPLAY:-}" ]; then
 else
     if pgrep -x dwm >/dev/null 2>&1; then pass "dwm process running"; else fail "dwm is not running in this session"; fi
     if pgrep -x dunst >/dev/null 2>&1; then pass "dunst running"; else warn "dunst not running (no notifications)"; fi
-    if pgrep -x touchegg >/dev/null 2>&1; then pass "touchegg running"; else warn "touchegg not running (gestures dead)"; fi
+    if pgrep -f "touchegg" >/dev/null 2>&1; then pass "touchegg running"; else warn "touchegg not running (gestures dead)"; fi
     if [ -f "$HOME/.config/systemd/user/keypress-sound.service" ]; then
         if systemctl --user is-active keypress-sound.service >/dev/null 2>&1; then
             pass "keypress-sound.service running"

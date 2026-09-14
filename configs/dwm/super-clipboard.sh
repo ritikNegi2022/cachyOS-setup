@@ -14,7 +14,7 @@
 action="$1"  # c | x | v
 
 # tiny race: let Super release a bit, also gives dwm time to focus correct window
-sleep 0.05 2>/dev/null || true
+sleep 0.10 2>/dev/null || true
 
 win="$(xdotool getactivewindow 2>/dev/null)" || exit 0
 # WM_CLASS second string is window class, e.g. "Alacritty", "brave-browser", "Zed"
@@ -39,16 +39,16 @@ fi
 case "$action" in
     c|C)
         if [ "$is_term" = 1 ]; then
-            xdotool key --clearmodifiers ctrl+shift+c 2>/dev/null || xdotool key ctrl+shift+c 2>/dev/null
+            xdotool key --clearmodifiers ctrl+shift+c 2>/dev/null || (sleep 0.1; xdotool key --clearmodifiers ctrl+shift+c) 2>/dev/null
         else
-            xdotool key --clearmodifiers ctrl+c 2>/dev/null || xdotool key ctrl+c 2>/dev/null
+            xdotool key --clearmodifiers ctrl+c 2>/dev/null || (sleep 0.1; xdotool key --clearmodifiers ctrl+c) 2>/dev/null
         fi
         ;;
     x|X)
         if [ "$is_term" = 1 ]; then
             # Alacritty has no Cut; map to Copy (Ctrl+Shift+C) so selection not lost.
             # Keep as copy to avoid SIGINT (Ctrl+X in shell does nothing anyway).
-            xdotool key --clearmodifiers ctrl+shift+c 2>/dev/null || xdotool key ctrl+shift+c 2>/dev/null
+            xdotool key --clearmodifiers ctrl+shift+c 2>/dev/null || (sleep 0.1; xdotool key --clearmodifiers ctrl+shift+c) 2>/dev/null
         else
             xdotool key --clearmodifiers ctrl+x 2>/dev/null || xdotool key ctrl+x 2>/dev/null
         fi
@@ -57,7 +57,7 @@ case "$action" in
         if [ "$is_term" = 1 ]; then
             xdotool key --clearmodifiers ctrl+shift+v 2>/dev/null || xdotool key ctrl+shift+v 2>/dev/null
         else
-            xdotool key --clearmodifiers ctrl+v 2>/dev/null || xdotool key ctrl+v 2>/dev/null
+            xdotool key --clearmodifiers ctrl+v 2>/dev/null || (sleep 0.1; xdotool key --clearmodifiers ctrl+v) 2>/dev/null
         fi
         ;;
 esac
