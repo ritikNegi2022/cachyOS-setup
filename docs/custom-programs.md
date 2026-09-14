@@ -223,6 +223,7 @@ systemctl status acpid; systemctl is-enabled acpid; systemd-analyze cat-config s
 | `alsa-lib` `alsa-utils` `alsa-firmware` `sof-firmware` `alsa-ucm-conf` | ALSA + firmware |
 | `pipewire` `pipewire-pulse` `pipewire-alsa` `wireplumber` | PipeWire audio `wpctl` |
 | `networkmanager` | `nmcli`/`nmtui` `System+eth/wifi` |
+| `impala` + `iwd` | WiFi TUI `impala` on top of `iwd` (extra; `iwd.service` NOT enabled by default — conflicts with `NetworkManager`) |
 | `bluez` `bluez-utils` | `bluetoothctl` |
 | `ttf-jetbrains-mono-nerd` `noto-fonts-emoji` | Nerd Font for `alacritty`/`dwm` icons `│` `` etc + emoji |
 | `mpv` | media player |
@@ -250,6 +251,20 @@ systemctl status acpid; systemctl is-enabled acpid; systemd-analyze cat-config s
 | `ly@tty1.service` `graphical.target` | `ly` |
 | `touchegg.service` `Group=input` | `touchegg` gestures + `input` group |
 | `postgresql.service` | `postgresql` `initdb` `pg_hba trust` `api_watch` DBs |
+
+### Network TUIs — `nmtui` (default) vs `impala` (extra, iwd backend)
+
+- Default: `NetworkManager.service` enabled. Use `nmcli` or `nmtui` (ships with `networkmanager`).
+- Extra: `impala` (`extra` repo, https://github.com/pythops/impala) + `iwd` installed by `extra-packages.sh`, but `iwd.service` is NOT enabled (conflicts with `NetworkManager`/`wpa_supplicant`).
+- To try `impala`:
+  ```bash
+  sudo systemctl stop NetworkManager.service
+  sudo systemctl enable --now iwd.service
+  impala
+  # back to default:
+  # sudo systemctl disable --now iwd.service; sudo systemctl enable --now NetworkManager.service
+  ```
+- `doctor.sh` warns (not fails) if `impala` is missing.
 
 ## Reading
 

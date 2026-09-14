@@ -412,6 +412,13 @@ fi
 for s in NetworkManager.service bluetooth.service postgresql.service; do
     if svc_enabled "$s"; then pass "$s enabled"; else warn "$s not enabled (fix: sudo systemctl enable $s)"; fi
 done
+# Network TUIs: nmtui ships with networkmanager (default backend);
+# impala+iwd is the extra WiFi TUI (iwd.service must stay disabled while
+# NetworkManager is primary — warn only, so old installs don't FAIL).
+if have_pkg impala || have_bin impala; then pass "impala installed (extra WiFi TUI)"; else warn "impala missing (extra WiFi TUI — re-run scripts/extra-packages.sh)"; fi
+if have_pkg iwd || have_bin iwctl; then pass "iwd installed (impala backend)"; else warn "iwd missing (impala backend — re-run scripts/extra-packages.sh)"; fi
+if have_bin nmtui; then pass "nmtui present (NetworkManager TUI)"; else warn "nmtui missing (part of networkmanager)"; fi
+if svc_enabled "iwd.service"; then warn "iwd.service enabled — conflicts with NetworkManager (only enable when using impala)"; else pass "iwd.service not enabled (correct when NetworkManager is primary)"; fi
 if svc_enabled "touchegg.service"; then pass "touchegg.service enabled (gestures daemon)"; else warn "touchegg.service not enabled (fix: sudo systemctl enable --now touchegg.service)"; fi
 if systemctl is-active touchegg.service >/dev/null 2>&1 || pgrep -a touchegg 2>/dev/null | grep -q -- "--daemon"; then pass "touchegg daemon running"; else warn "touchegg daemon not running (gestures dead)"; fi
 if groups 2>/dev/null | grep -qw input || id -nG 2>/dev/null | grep -qw input; then pass "user in input group (for touchegg fallback)"; else info "user not in input group — system daemon handles gestures (enable touchegg.service)"; fi
