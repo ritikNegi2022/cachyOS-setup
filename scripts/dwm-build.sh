@@ -88,6 +88,13 @@ if command -v dwm >/dev/null 2>&1; then
         exit 1
     fi
     log "Session file: /usr/share/xsessions/dwm.desktop (ships with the package)"
+    # Reinstalling the package overwrites /usr/share/xsessions/dwm.desktop
+    # with the stock entry (Exec=dwm), which bypasses /etc/ly/dwm-session —
+    # that kills autostart, touchegg client, statusbar, remaps on next login.
+    # Restore our session entry (Exec=/etc/ly/dwm-session) right away.
+    "${SUDO[@]}" cp "$REPO_ROOT/configs/ly/dwm.desktop" /usr/share/xsessions/dwm.desktop && \
+        log "Restored /usr/share/xsessions/dwm.desktop (Exec=/etc/ly/dwm-session)" || \
+        err "WARNING: could not restore dwm.desktop — re-run scripts/dwm-config.sh before reboot!"
 else
     err "dwm build completed but binary not found in PATH"
     exit 1
