@@ -75,7 +75,7 @@ log "Installing official repo packages..."
     zathura zathura-pdf-mupdf \
     brightnessctl playerctl \
     maim slop xdg-utils libnotify slock bc \
-    android-tools \
+    android-tools android-file-transfer \
     clang rust-analyzer typescript-language-server lua-language-server \
     neovim-lspconfig \
     nodejs npm \

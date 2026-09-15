@@ -47,6 +47,7 @@ REPO_BINARIES=(
     "dsa"
     "keypress-sound"
     "aphone"
+    "amt"
 )
 
 # Verify repo binaries against the checksum manifest BEFORE installing:
@@ -128,6 +129,7 @@ link_shim() {
 }
 link_shim "pgadmin4" "/usr/pgadmin4/bin/pgadmin4"
 link_shim "zed" "/usr/bin/zeditor"
+link_shim "aft" "/usr/bin/android-file-transfer"
 unset -f link_shim
 
 # ---------------------------------------------------------------------------
@@ -292,7 +294,7 @@ log ""
 log "============================================"
 log "  BIN COPY COMPLETE"
 log "============================================"
-log "  Repo source:  $REPO_ROOT/bin/ (dsa, keypress-sound, aphone)"
+log "  Repo source:  $REPO_ROOT/bin/ (dsa, keypress-sound, aphone, amt)"
 log "  Extra source: $BIN_SRC (optional, old system)"
 log "  Destination:  $BIN_DST"
 log "  Copied: $COPIED binaries"
@@ -302,6 +304,9 @@ log "  Repo-shipped (always installed):"
 log "    - dsa (device security/authentication tool)"
 log "    - keypress-sound (keyboard sound effect tool, systemd user service)"
 log "    - aphone (Android file transfer over USB via adb: ls/pull/push)"
+log "    - amt (Android MTP mount at ~/mnt/phone for TUI browsing with lf: amt | amt u)"
+log "  Short GUI alias (shim, needs package installed):"
+log "    - aft -> android-file-transfer (MTP drag-and-drop window)"
 log ""
 log "  Optional (only if present in $BIN_SRC):"
 log "    - agent / agent-rs (agent tools)"

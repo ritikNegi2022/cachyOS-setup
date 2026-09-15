@@ -164,7 +164,8 @@ screen-lock --test  # dry run: shows what would be locked, locks nothing
 | `libinput` | touchpad driver + `NaturalScrolling` |
 | `touchegg` | 3-finger gesture daemon (`touchegg --daemon` + client) |
 | `android-tools` | `adb` backend for `aphone` (`~/.bin/aphone`: `ls/pull/push` any Android over USB, no MTP) |
-| `simple-mtpfs` (AUR) | FUSE-mount Android MTP → browse fully in terminal with `lf ~/mnt/phone` (no GUI, no USB debugging); unmount: `fusermount -u ~/mnt/phone` |
+| `simple-mtpfs` (AUR) | backend for `amt`: `amt` mounts any Android at `~/mnt/phone` (auto-created) → browse fully in terminal with `lf`; `amt u` unmounts (no GUI, no USB debugging) |
+| `android-file-transfer` | GUI fallback, launched as `aft` (`~/.bin` shim): MTP drag-and-drop window |
 | `xclip` | CLI clipboard (`xclip`, also `xclip` in nvim `unnamedplus`) |
 | `xterm` | fallback terminal (not primary; `alacritty` is) |
 | `file` | `file` (lf preview) |

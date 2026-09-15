@@ -1,0 +1,53 @@
+#!/bin/sh
+# amt — Android MTP mount for TUI browsing (simple-mtpfs + lf, no GUI).
+# Setup (packages, ~/mnt/phone) is automatic — just run it.
+#
+# Usage:
+#   amt      mount phone at ~/mnt/phone (phone: unlocked, File-transfer mode)
+#   amt u    unmount (always unmount before unplugging)
+# Then browse:  lf ~/mnt/phone
+#
+# Needs: simple-mtpfs (setup installs it: scripts/install.sh)
+
+MNT="$HOME/mnt/phone"
+
+die() { echo "amt: $*" >&2; exit 1; }
+
+unmount() {
+    if mountpoint -q "$MNT" 2>/dev/null; then
+        fusermount -u "$MNT" 2>/dev/null || umount "$MNT" 2>/dev/null \
+            || die "unmount failed — close lf/terminals inside $MNT and retry"
+        echo "amt: unmounted $MNT (safe to unplug)"
+    else
+        echo "amt: not mounted ($MNT)"
+    fi
+}
+
+[ "${1:-}" = "u" ] && { unmount; exit 0; }
+[ $# -gt 0 ] && { echo "amt: usage: amt | amt u" >&2; exit 1; }
+
+command -v simple-mtpfs >/dev/null 2>&1 \
+    || die "simple-mtpfs missing — install: yay -S simple-mtpfs (fresh setups get it via scripts/install.sh)"
+command -v fusermount >/dev/null 2>&1 \
+    || die "fusermount missing — install fuse3: sudo pacman -S --needed fuse3"
+
+mkdir -p "$MNT" || die "cannot create $MNT"
+
+if mountpoint -q "$MNT" 2>/dev/null; then
+    echo "amt: already mounted at $MNT — browse: lf $MNT"
+    exit 0
+fi
+
+if ! simple-mtpfs "$MNT" 2>/tmp/amt-err.log; then
+    echo "amt: mount failed — phone must be UNLOCKED in File-transfer mode:" >&2
+    sed 's/^/  /' /tmp/amt-err.log 2>/dev/null >&2
+    echo "  fix: unlock phone, set USB to File transfer, unplug/replug, retry" >&2
+    exit 1
+fi
+
+if mountpoint -q "$MNT" 2>/dev/null; then
+    echo "amt: mounted at $MNT — browse: lf $MNT"
+    echo "amt: when done: amt u  (unmount before unplugging)"
+else
+    die "simple-mtpfs exited 0 but $MNT is not a mount — retry amt"
+fi
