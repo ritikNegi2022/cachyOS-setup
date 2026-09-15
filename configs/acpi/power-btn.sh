@@ -6,19 +6,20 @@
 # Locking keeps all apps running (slock via screen-lock, black screen; unlock
 # with your login password). Nothing is closed — safe for break-time locking.
 #
-# Debug: tail /tmp/screen-lock.log ; dry run: screen-lock --test
+# Debug: tail /tmp/power-btn.log ; dry run: screen-lock --test
+LOG=/tmp/power-btn.log
+log() { echo "$(date '+%F %T') power-btn: $*" >>"$LOG" 2>/dev/null; logger -t power-btn "$*" 2>/dev/null || true; }
+log "event args: $*"
 
 if command -v screen-lock >/dev/null 2>&1; then
-    exec screen-lock "$@"
+    exec screen-lock
 fi
 if [ -x /usr/local/bin/screen-lock ]; then
-    exec /usr/local/bin/screen-lock "$@"
+    exec /usr/local/bin/screen-lock
 fi
 
 # Fallback (screen-lock not installed yet): log loudly and do nothing.
 # Never power off, never kill the session from here.
-LOG=/tmp/power-btn.log
-log() { echo "$(date '+%F %T') power-btn: $*" >>"$LOG" 2>/dev/null; logger -t power-btn "$*" 2>/dev/null || true; }
 log "ERROR: screen-lock missing — button does nothing (install via scripts/dwm-config.sh)"
 if [ "${1:-}" = "--test" ] || [ "${1:-}" = "test" ]; then
     echo "--- power-btn self-test ---"

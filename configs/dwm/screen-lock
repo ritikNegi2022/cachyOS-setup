@@ -16,34 +16,78 @@
 # environment is already correct.
 #
 # Usage: screen-lock [--test]   (--test = dry run, locks nothing)
+# Internal: screen-lock --child (already dropped to the session user)
 
 LOG=/tmp/screen-lock.log
 log() { echo "$(date '+%F %T') screen-lock: $*" >>"$LOG" 2>/dev/null; logger -t screen-lock "$*" 2>/dev/null || true; }
 
 TEST=0
+CHILD=0
 [ "${1:-}" = "--test" ] && TEST=1
+[ "${1:-}" = "--child" ] && CHILD=1
 
 # Single instance: one power-button press often delivers duplicate ACPI
-# events (journal showed 3 handler runs in the same second), and each would
-# spawn its own slock — the top one steals the X grab, so you get a password
-# prompt that flashes away and must type twice. Guard twice:
-#   1. flock: atomic, race-free for same-millisecond duplicates. The lock is
-#      held on fd 9 until slock exits (fd survives exec), so a second
-#      invocation — even via runuser/sudo — fails closed and skips.
-#   2. pgrep: backstop in case a launcher closes non-std fds (dropping the
-#      flock early); a visible slock means a lock is already in progress.
-if command -v flock >/dev/null 2>&1; then
-    exec 9>/tmp/screen-lock.guard 2>/dev/null || true
-    if ! flock -n 9 2>/dev/null; then
-        log "lock already in progress — skipping duplicate request"
-        [ "$TEST" = "1" ] && echo "TEST: lock in progress — would skip"
+# events, and each would spawn its own slock — the top one steals the X grab,
+# so you get a password prompt that flashes away and must type twice.
+# The lock MUST be taken by the process that execs slock itself: an flock
+# taken earlier (e.g. by the root wrapper) can be dropped when runuser/sudo
+# launch the unprivileged child, reopening the race. So the root path below
+# re-execs this script as the user (--child) and only that child locks.
+#   1. flock: atomic, race-free for same-millisecond duplicates. fd 9 stays
+#      open across the final plain `exec slock`, so it is held until unlock.
+#   2. pgrep: backstop; a visible slock means a lock is already in progress.
+GUARD=/tmp/screen-lock.guard
+# exit code flock returns when the lock is already held (vs slock's own code)
+CONFLICT=99
+
+# Make sure the guard file exists and is shareable between the root/acpid
+# path and the user/dwm-key path (first creator wins; each side repairs
+# perms when it can). Pure redirections/commands — no `exec 9>` fd games:
+# a failed redirection on exec kills a non-interactive shell outright.
+ensure_guard() {
+    ( umask 000; : >>"$GUARD" ) 2>/dev/null || true
+    chmod 666 "$GUARD" 2>/dev/null || true
+}
+
+# guard_free: succeeds (0) if no lock is in progress and we may proceed.
+# Uses `flock cmd` mode so the lock is held by flock itself until slock
+# exits — nothing for runuser/sudo to drop, no fds to babysit in sh.
+guard_free() {
+    ensure_guard
+    [ -w "$GUARD" ] || return 0  # unopenable (stale strict perms): degrade to pgrep-only
+    flock -n -E "$CONFLICT" "$GUARD" true 2>/dev/null
+    [ "$?" -ne "$CONFLICT" ]
+}
+
+take_guard() {
+    if guard_free; then
+        return 0
+    fi
+    log "lock already in progress — skipping duplicate request"
+    [ "$TEST" = "1" ] && echo "TEST: lock in progress — would skip"
+    exit 0
+}
+
+# lock_now: the atomic gate. Runs slock as a child of `flock`, so the
+# lock is held until unlock — nothing to inherit, drop, or babysit.
+# $1 = log label, e.g. "as blank on :0".
+lock_now() {
+    if command -v flock >/dev/null 2>&1 && [ -w "$GUARD" ]; then
+        ensure_guard
+        log "locking ($1)"
+        flock -n -E "$CONFLICT" "$GUARD" slock
+        rc=$?
+        [ "$rc" -eq "$CONFLICT" ] && log "lock already in progress — skipping duplicate request"
+        exit "$rc"
+    fi
+    # degraded: no flock binary or guard unopenable — pgrep-only backstop
+    if [ "$TEST" != "1" ] && pgrep -x slock >/dev/null 2>&1; then
+        log "slock already running — skipping duplicate request"
         exit 0
     fi
-fi
-if [ "$TEST" != "1" ] && pgrep -x slock >/dev/null 2>&1; then
-    log "slock already running — skipping duplicate request"
-    exit 0
-fi
+    log "locking ($1, unguarded)"
+    exec slock
+}
 
 if ! command -v slock >/dev/null 2>&1; then
     log "slock MISSING — cannot lock (repo: sudo pacman -S --needed slock; black theme: bash scripts/slock-build.sh)"
@@ -52,11 +96,16 @@ if ! command -v slock >/dev/null 2>&1; then
     exit 1
 fi
 
-# Already running as the session user inside X? Just lock.
-if [ "$(id -u 2>/dev/null)" != "0" ] && [ -n "${DISPLAY:-}" ]; then
-    [ "$TEST" = "1" ] && { echo "TEST: would run: slock (as $USER on $DISPLAY)"; exit 0; }
-    log "locking as $USER on $DISPLAY"
-    exec slock
+# Already the session user inside X (dwm keybinding, or --child after the
+# root wrapper dropped privileges)? Take the guard here — in THIS process —
+# and lock. The guard must live here so fd 9 survives the plain exec below.
+if [ "$CHILD" = "1" ] || { [ "$(id -u 2>/dev/null)" != "0" ] && [ -n "${DISPLAY:-}" ]; }; then
+    if [ "$TEST" = "1" ]; then
+        take_guard  # exits 0 with "would skip" when held, else falls through
+        echo "TEST: would run: slock (as ${USER:-$user} on ${DISPLAY:-$DISP})"
+        exit 0
+    fi
+    lock_now "as ${USER:-$user} on ${DISPLAY:-$DISP}"
 fi
 
 # --- Running as root (acpid): find the graphical user + X creds ---------------
@@ -97,13 +146,13 @@ if [ "$TEST" = "1" ]; then
     exit 0
 fi
 
-log "locking as $user on $DISP"
+log "locking as $user on $DISP (handing to --child)"
 if command -v runuser >/dev/null 2>&1; then
     # shellcheck disable=SC2086
-    exec runuser -u "$user" -- env DISPLAY="$DISP" ${XAUTH:+XAUTHORITY="$XAUTH"} slock
+    exec runuser -u "$user" -- env DISPLAY="$DISP" ${XAUTH:+XAUTHORITY="$XAUTH"} /usr/local/bin/screen-lock --child
 elif command -v sudo >/dev/null 2>&1; then
     # shellcheck disable=SC2086
-    exec sudo -u "$user" env DISPLAY="$DISP" ${XAUTH:+XAUTHORITY="$XAUTH"} slock
+    exec sudo -u "$user" env DISPLAY="$DISP" ${XAUTH:+XAUTHORITY="$XAUTH"} /usr/local/bin/screen-lock --child
 else
-    exec su -s /bin/sh "$user" -c "DISPLAY='$DISP' ${XAUTH:+XAUTHORITY='$XAUTH'} exec slock"
+    exec su -s /bin/sh "$user" -c "DISPLAY='$DISP' ${XAUTH:+XAUTHORITY='$XAUTH'} exec /usr/local/bin/screen-lock --child"
 fi
