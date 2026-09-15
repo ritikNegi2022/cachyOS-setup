@@ -24,6 +24,9 @@ Setup: ______________  Date: ______________
       *Fix if console:* `sudo systemctl enable ly@tty1.service && sudo systemctl set-default graphical.target`
 - [ ] Log in → **dwm starts** (black screen with a gray bar is normal — bar is hidden by default)
       *Fix if session missing:* `ls /usr/share/xsessions/` should list `dwm.desktop`
+- [ ] Exactly **1 alacritty terminal auto-opens** after login
+      *Fix if none:* `systemctl --user status alacritty-autostart` + `cat /tmp/alacritty-autostart.log`;
+      re-run `bash scripts/bin-copy.sh` then `bash scripts/dwm-config.sh` (or `apply-privileged.sh`) to refresh `/etc/ly/dwm-session`
 
 ---
 
@@ -36,9 +39,12 @@ Setup: ______________  Date: ______________
       Bar should read: `vol:…% br:…% bat:…% nw:… cpu:…°C  <date>`
 - [ ] **CapsLock acts as Esc** and **Esc acts as CapsLock** (try in nvim)
       Alt and Ctrl are swapped the same way — this is intentional
-- [ ] **Super+Shift+x** locks the screen (type password to unlock)
-- [ ] **Power button locks the screen** instead of shutting down
+- [ ] **Super+Shift+x** locks the screen with **slock** (black screen, type login password to unlock, all apps still open)
+- [ ] **Power button locks the screen** instead of shutting down (same slock, nothing closes)
       *Fix if it powers off:* `sudo systemctl enable --now acpid.service`
+      *Fix if it does nothing:* re-run `bash scripts/dwm-config.sh`, then dry-run `screen-lock --test` +
+      `acpi_listen` (press power, expect `button/power PBTN`)
+      *Manual logout to ly instead:* run `ly-logout` (closes apps — only when you mean it)
 
 ---
 
@@ -69,12 +75,14 @@ Setup: ______________  Date: ______________
 
 ---
 
-## 6. Trackpad gestures (touchegg)
+## 6. Trackpad gestures (touchegg — left/right only, inverted)
 
-- [ ] 3-finger swipe **up** → zoom window to master
-- [ ] 3-finger swipe **down** → close window
-- [ ] 3-finger swipe **left/right** → resize master area
-      *Dead gestures?* `pgrep -x touchegg` — if empty, check `~/.config/touchegg/touchegg.conf` exists and log out/in
+- [ ] 3-finger swipe **left** → **next** tag
+- [ ] 3-finger swipe **right** → **prev** tag
+- [ ] No up/down gestures (removed on purpose)
+      *Flaky or dead?* `pgrep -a touchegg` must show EXACTLY one `--daemon` + one bare client —
+      duplicates split/double-fire events. Fix: re-run `bash scripts/dwm-config.sh`, then log out/in.
+      Also confirm `~/.config/touchegg/touchegg.conf` matches the repo copy.
 
 ---
 
@@ -94,10 +102,9 @@ Setup: ______________  Date: ______________
 - [ ] `freebuff` runs in a project dir
 - [ ] `opencode` runs (may need `exec $SHELL` after setup for PATH)
 - [ ] `ssh -T git@github.com` greets you with your username
-      *Fresh install?* setup generates a NEW key — add its pub to GitHub or auth fails:
-      `cat ~/.ssh/git_blank.pub` → https://github.com/settings/keys → New SSH key → re-run `bash scripts/ssh-setup.sh`
-      *Keep the old key instead?* before setup: `SSH_KEY_SRC=/path/to/backup-git_blank bash scripts/ssh-setup.sh`
-      *Fix:* key must be at `~/.ssh/git_blank` (600) + loaded in agent (`ssh-add -l`) — re-run `scripts/ssh-setup.sh`
+      *Fresh install?* setup generates a NEW key and continues — if auth fails, add the pub to GitHub afterwards:
+      `cat ~/.ssh/git_blank.pub` → https://github.com/settings/keys → New SSH key → `ssh -T git@github.com` to re-test
+      *Fix:* key must be at `~/.ssh/git_blank` (600) + loaded in agent (`ssh-add -l`) — re-run `scripts/ssh-setup.sh` (never blocks setup)
 - [ ] `pg_lsclusters` or `systemctl status postgresql` → running
 - [ ] `psql -U postgres -d api_watch -c '\q'` connects (trust auth, dev box)
 - [ ] `pgadmin4` desktop opens; register server `127.0.0.1:5432` user `postgres`
@@ -128,8 +135,10 @@ Setup: ______________  Date: ______________
 | dwm is stock (Alt opens menu, `st` opens) | re-run `scripts/dwm-build.sh` (config injection) |
 | No sound | `sudo pacman -S sof-firmware alsa-ucm-conf` then reboot |
 | Power button shuts down | `sudo systemctl enable --now acpid.service` |
+| Power button does nothing | re-run `scripts/dwm-config.sh`; `ly-logout --test`; `acpi_listen` |
+| No alacritty after login | `systemctl --user enable --now alacritty-autostart`; re-run `bin-copy.sh` + refresh `/etc/ly/dwm-session` |
 | No statusline ever | check `/etc/ly/dwm-statusbar` exists + executable; `pgrep -f dwm-statusbar` |
-| Gestures dead | `pgrep -x touchegg`; verify `~/.config/touchegg/touchegg.conf` |
+| Gestures dead/flaky | `pgrep -a touchegg` (want 1 daemon + 1 client); re-run `dwm-config.sh`, log out/in |
 | No keypress sounds | `systemctl --user status keypress-sound`; logs: `journalctl --user -u keypress-sound -e` |
 | dsa/keypress-sound missing | re-run `scripts/bin-copy.sh` (they ship in repo `bin/`, no ~/.bin source needed) |
 | Keybinds ignored | keymap swap may confuse muscle memory — remaps are session-wide (delete `/etc/ly/keyswap.sh &` line in `/etc/ly/dwm-session` to revert) |

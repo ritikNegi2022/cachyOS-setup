@@ -100,7 +100,7 @@ static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont,
 static const char *termcmd[]   = { "alacritty", NULL };
 static const char *bravecmd[]  = { "brave", NULL };
 static const char *zencmd[]    = { "zen-browser", NULL };
-static const char *editorcmd[] = { "zed", NULL };
+static const char *editorcmd[] = { "zeditor", NULL };   /* zed package binary is "zeditor" (+ ~/.bin/zed shim for terminal) */
 static const char *filemgrcmd[] = { "alacritty", "-e", "lf", NULL };
 static const char *sysmoncmd[] = { "alacritty", "-e", "btop", NULL };
 static const char *lazygitcmd[] = { "alacritty", "-e", "lazygit", NULL };
@@ -119,7 +119,7 @@ static const char *mediaprevcmd[] = { "playerctl", "previous", NULL };
 static const char *mediastopcmd[] = { "playerctl", "stop", NULL };
 static const char *screenshotcmd[] = { "sh", "-c", "mkdir -p ~/Pictures && maim ~/Pictures/shot-$(date +%Y%m%d-%H%M%S).png && notify-send -t 1500 'Screenshot' 'saved to ~/Pictures'", NULL };
 static const char *selscreenshotcmd[] = { "sh", "-c", "mkdir -p ~/Pictures && maim -s ~/Pictures/shot-$(date +%Y%m%d-%H%M%S).png && notify-send -t 1500 'Screenshot' 'selection saved to ~/Pictures'", NULL };
-static const char *lockcmd[]     = { "slock", NULL };
+static const char *lockcmd[]    = { "screen-lock", NULL };   /* slock black: lock screen, apps keep running */
 static const char *sleepcmd[]    = { "systemctl", "suspend", NULL };
 static const char *displaycmd[]  = { "sh", "-c", "xrandr --auto", NULL };
 static const char *calccmd[]     = { "alacritty", "-e", "sh", "-c", "echo 'calc — enter expressions, Ctrl+D to exit'; bc -l", NULL };
@@ -156,7 +156,7 @@ static const Key keys[] = {
     { 0,                   XF86XK_TouchpadToggle,   spawn, SHCMD("id=$(xinput list --id-only \"$(xinput list --name-only 2>/dev/null | grep -im1 -i touchpad)\" 2>/dev/null); [ -n \"$id\" ] && xinput toggle \"$id\"") },
     { 0,                   XK_Print,                spawn, {.v = screenshotcmd } },
     { ShiftMask,           XK_Print,                spawn, {.v = selscreenshotcmd } },
-    { MODKEY|ShiftMask,    XK_x,                    spawn, {.v = lockcmd } },   /* manual lock */
+    { MODKEY|ShiftMask,    XK_x,                    spawn, {.v = lockcmd } },   /* lock screen, apps keep running */
 
     /* --- Super clipboard: Super+C/X/V -> copy/cut/paste everywhere, terminal-safe --- */
     /* Alacritty already handles Super+C/V natively; this covers browsers/Zed/others */
@@ -165,7 +165,8 @@ static const Key keys[] = {
     { MODKEY,              XK_x,                    spawn, SHCMD("super-clipboard x 2>/dev/null || $HOME/.local/bin/super-clipboard x") },
     { MODKEY,              XK_v,                    spawn, SHCMD("super-clipboard v 2>/dev/null || $HOME/.local/bin/super-clipboard v") },
 
-    /* --- tag switching via gesture/keyboard: 3-finger left/right = tag-1/tag+1 --- */
+    /* --- tag switching: keyboard Super+Ctrl+Left/Right = tag-1/tag+1;
+           3-finger gestures are INVERTED (swipe left = next tag, swipe right = prev tag) --- */
     { MODKEY|ControlMask,  XK_Left,                 shiftview,      {.i = -1 } },
     { MODKEY|ControlMask,  XK_Right,                shiftview,      {.i = +1 } },
 

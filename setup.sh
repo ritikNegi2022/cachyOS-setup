@@ -6,6 +6,7 @@
 #   scripts/install.sh        — AUR helper + core packages (+ pgadmin4-desktop)
 #   scripts/extra-packages.sh — additional software (audio, bluetooth, fonts, ...)
 #   scripts/dwm-build.sh      — build dwm from AUR with our config.h
+#   scripts/slock-build.sh    — build slock from source with black lock screen
 #   scripts/dwm-config.sh     — ly display manager + dwm session + gestures
 #   scripts/ssh-setup.sh      — SSH config (git_blank key) + git global identity
 #   scripts/bin-copy.sh       — install ~/.bin tools (dsa + keypress-sound ship
@@ -61,12 +62,15 @@ bash "$THIS_DIR/scripts/extra-packages.sh"
 log "=== Step 3: Build dwm with custom config.h ==="
 bash "$THIS_DIR/scripts/dwm-build.sh"
 
+log "=== Step 3b: Build slock with black lock screen ==="
+bash "$THIS_DIR/scripts/slock-build.sh"
+
 log "=== Step 4: Configure ly + dwm session + gestures ==="
 bash "$THIS_DIR/scripts/dwm-config.sh"
 
 log "=== Step 5: Install user configs ==="
 mkdir -p "$HOME/.config/alacritty" "$HOME/.config/tmux" "$HOME/.config/nvim" "$HOME/.config/lf"
-mkdir -p "$HOME/.config/touchegg" "$HOME/.config/zed"
+mkdir -p "$HOME/.config/touchegg" "$HOME/.config/zed" "$HOME/.config/dunst"
 
 cp "$THIS_DIR/configs/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
 cp "$THIS_DIR/configs/tmux.conf" "$HOME/.config/tmux/tmux.conf"
@@ -78,6 +82,8 @@ chmod +x "$HOME/.config/lf/preview.sh"
 # touchegg user config — the daemon (started per-session by dwm-session) reads
 # ~/.config/touchegg/touchegg.conf on Arch; /etc/touchegg/ is not used.
 cp "$THIS_DIR/configs/touchegg.conf" "$HOME/.config/touchegg/touchegg.conf"
+# dunst monochrome theme (without it popups use default blue/red urgency colors)
+cp "$THIS_DIR/configs/dunst/dunstrc" "$HOME/.config/dunst/dunstrc"
 # Super+Enter live fallback helper (until dwm rebuild)
 mkdir -p "$HOME/.local/bin"
 if [[ -f "$THIS_DIR/configs/dwm/super-enter-live.py" ]]; then
@@ -115,6 +121,22 @@ if [[ -f "$THIS_DIR/docs/custom-programs.md" ]]; then
     "${SUDO[@]}" mkdir -p /usr/share/doc/cachyOS-setup
     "${SUDO[@]}" cp "$THIS_DIR/docs/custom-programs.md" /usr/share/doc/cachyOS-setup/custom-programs.md
     cp "$THIS_DIR/docs/custom-programs.md" "$HOME/custom-programs.md" 2>/dev/null || true
+fi
+# Full system guide (this-is-how-everything-works manual) — alongside the others
+if [[ -f "$THIS_DIR/docs/system-guide.md" ]]; then
+    cp "$THIS_DIR/docs/system-guide.md" "$HOME/Documents/system-guide.md"
+    cp "$THIS_DIR/docs/system-guide.md" "$HOME/.local/share/cachyOS-setup/system-guide.md"
+    "${SUDO[@]}" mkdir -p /usr/share/doc/cachyOS-setup
+    "${SUDO[@]}" cp "$THIS_DIR/docs/system-guide.md" /usr/share/doc/cachyOS-setup/system-guide.md
+    cp "$THIS_DIR/docs/system-guide.md" "$HOME/system-guide.md" 2>/dev/null || true
+fi
+# Manual-tasks runbook (things YOU must do after setup: GitHub key, Wi-Fi, logins…)
+if [[ -f "$THIS_DIR/docs/after-setup.md" ]]; then
+    cp "$THIS_DIR/docs/after-setup.md" "$HOME/Documents/after-setup.md"
+    cp "$THIS_DIR/docs/after-setup.md" "$HOME/.local/share/cachyOS-setup/after-setup.md"
+    "${SUDO[@]}" mkdir -p /usr/share/doc/cachyOS-setup
+    "${SUDO[@]}" cp "$THIS_DIR/docs/after-setup.md" /usr/share/doc/cachyOS-setup/after-setup.md
+    cp "$THIS_DIR/docs/after-setup.md" "$HOME/after-setup.md" 2>/dev/null || true
 fi
 
 # Note: ly config + dwm session go to /etc/ly/ and /usr/share/xsessions/
@@ -169,10 +191,10 @@ echo "    Super+Shift+g -> lazygit"
 echo "    Super+Shift+s -> btop"
 echo "    Super+f       -> fullscreen current window | Super+Shift+f -> floating | Super+y -> group (Hyprland-like monocle)"
 echo "    Super+c/x/v   -> copy/cut/paste everywhere (terminal-safe, no SIGINT)"
-echo "    Super+Ctrl+Left/Right -> prev/next tag (also 3-finger swipe left/right)"
+echo "    Super+Ctrl+Left/Right -> prev/next tag (3-finger swipe is inverted: left=next, right=prev)"
 echo "    Super+1..9    -> tags 1-9 | Super+minus -> tag 10"
 echo "    Super+Shift+c -> close window | Super+Shift+q -> quit dwm"
-echo "    Super+Shift+x -> lock screen (slock)"
+echo "    Super+Shift+x -> lock screen (slock, black, apps keep running)"
 echo ""
 echo "  LAPTOP FN KEYS: volume/mute/mic (wpctl), brightness (brightnessctl),"
 echo "    play/pause/next/prev (playerctl), PrintScr screenshots (maim),"
@@ -193,11 +215,13 @@ echo ""
 echo "  PGADMIN 4 (desktop binary only, no web mode):"
 echo "    Launch: pgadmin4"
 echo ""
-echo "  TRACKPAD GESTURES (3-finger swipes via touchegg):"
-echo "    Up -> zoom window | Down -> close window | Left/Right -> prev/next tag"
+echo "  TRACKPAD GESTURES (3-finger swipes via touchegg, inverted):"
+echo "    Swipe left -> next tag | Swipe right -> prev tag (no up/down gestures)"
 echo ""
 echo ""
 echo "  EXTRAS:"
+echo "    - NEXT: do the manual tasks in ~/Documents/after-setup.md"
+echo "      (GitHub SSH key, Wi-Fi, logins — setup can't do these for you)"
 echo "    - Verify this install any time:   bash scripts/doctor.sh"
 echo "    - Printable first-boot checklist: docs/first-boot-checklist.md"
 echo "    - Statusline hidden by default -> Super+F12 toggles it"
@@ -205,8 +229,8 @@ echo "    - Key remaps: ESC <-> CapsLock, Alt <-> Ctrl (session-wide)"
 echo "    - Input: natural (inverted) scrolling + Super+C/X/V universal copy/paste"
 echo "    - Statusbar: instant vol/brightness (USR1), no delay"
 echo "    - Keybindings doc: ~/Documents/keybindings.md + /usr/share/doc/cachyOS-setup/"
-echo "    - Power button LOCKS the screen (slock) instead of shutting down"
-echo "      (acpid; shutdown via CLI: systemctl poweroff)"
+echo "    - Power button LOCKS the screen (slock, black) instead of shutting down"
+echo "      (acpid + screen-lock; apps keep running; shutdown via CLI: systemctl poweroff)"
 echo "    - Hourly time notifications + reminders via dunst:"
 echo "        remind add 15:00 Break time!   # daily reminder"
 echo "        remind once 18:30 Call home    # fires once, removes itself"

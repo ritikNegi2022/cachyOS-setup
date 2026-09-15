@@ -44,20 +44,25 @@ log "Installing ly config and dwm session file..."
 "${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/dwm/reminderd" /etc/ly/reminderd
 "${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/dwm/remind" /usr/local/bin/remind
 
-# Power button -> lock (slock) instead of shutdown, via acpid + logind override
-"${SUDO[@]}" pacman -S --noconfirm --needed acpid
+# Power button -> lock screen (apps keep running) instead of shutdown,
+# via acpid + logind override. screen-lock uses slock (black custom build).
+"${SUDO[@]}" pacman -S --noconfirm --needed acpid slock
+"${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/dwm/screen-lock" /usr/local/bin/screen-lock
+"${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/dwm/ly-logout" /usr/local/bin/ly-logout
 "${SUDO[@]}" install -m 755 "$REPO_ROOT/configs/acpi/power-btn.sh" /etc/acpi/power-btn.sh
 "${SUDO[@]}" install -m 644 "$REPO_ROOT/configs/acpi/power" /etc/acpi/events/power
 "${SUDO[@]}" systemctl enable --now acpid.service
+# Restart so the NEW handler takes effect without a reboot.
+"${SUDO[@]}" systemctl restart acpid.service 2>/dev/null || true
 # Inhibit systemd-logind's default poweroff so acpid can handle it
 "${SUDO[@]}" mkdir -p /etc/systemd/logind.conf.d
 if [[ -f "$REPO_ROOT/configs/systemd/logind.conf.d/10-powerkey.conf" ]]; then
     "${SUDO[@]}" cp "$REPO_ROOT/configs/systemd/logind.conf.d/10-powerkey.conf" /etc/systemd/logind.conf.d/10-powerkey.conf
-    log "Installed /etc/systemd/logind.conf.d/10-powerkey.conf (HandlePowerKey=ignore → acpid → slock)"
+    log "Installed /etc/systemd/logind.conf.d/10-powerkey.conf (HandlePowerKey=ignore → acpid → screen-lock)"
     # Reload logind without killing session (HUP), fallback to restart
     if pid=$(pidof systemd-logind 2>/dev/null | head -1); then [ -n "$pid" ] && "${SUDO[@]}" kill -HUP "$pid" 2>/dev/null || "${SUDO[@]}" systemctl kill --kill-who=main --signal=HUP systemd-logind 2>/dev/null || true; fi
 fi
-log "Power button now locks the screen (slock) — shutdown via CLI only"
+log "Power button now locks the screen (slock, black, apps keep running) — shutdown via CLI only"
 
 # ---------------------------------------------------------------------------
 # 2. Enable ly as display manager (ly ships a template unit: ly@.service)
@@ -133,17 +138,72 @@ fi
 # Ensure user config exists for live session (setup.sh also does)
 mkdir -p ~/.config/touchegg 2>/dev/null || true
 if [[ -f "$REPO_ROOT/configs/touchegg.conf" ]]; then
-    cp "$REPO_ROOT/configs/touchegg.conf" ~/.config/touchegg/touchegg.conf 2>/dev/null && log "Installed ~/.config/touchegg/touchegg.conf (left/right -> prev/next tag)"
+    cp "$REPO_ROOT/configs/touchegg.conf" ~/.config/touchegg/touchegg.conf 2>/dev/null && log "Installed ~/.config/touchegg/touchegg.conf (swipe left=next tag, right=prev tag)"
 fi
-# Restart client to pick new config (daemon already running)
-pkill touchegg 2>/dev/null || true
+# Restart to pick up the new config with EXACTLY one daemon + one client.
+# Duplicates are the classic "gestures work sometimes" cause: two daemons
+# split input events (each swipe reaches only one), two clients fire every
+# gesture twice (tags skip). So: kill everything, then start one of each.
+pkill -x touchegg 2>/dev/null || true
 sleep 0.5
-# Start daemon if system service not active (fallback user daemon)
-if ! pgrep -f "touchegg --daemon" >/dev/null 2>&1 && ! systemctl is-active --quiet touchegg 2>/dev/null; then
+# Prefer the system daemon: if enabled but not active, (re)start it so exactly
+# one system daemon owns the input devices.
+if systemctl is-enabled --quiet touchegg 2>/dev/null; then
+    "${SUDO[@]}" systemctl restart touchegg.service 2>&1 | tail -n 2 || true
+    sleep 0.5
+fi
+# Start user fallback daemon ONLY if the system service is not active.
+if ! systemctl is-active --quiet touchegg 2>/dev/null; then
     nohup touchegg --daemon >/tmp/touchegg-daemon.log 2>&1 & disown 2>/dev/null; sleep 0.5
 fi
-nohup touchegg >/tmp/touchegg.log 2>&1 & disown 2>/dev/null; sleep 0.5
-if pgrep -x touchegg >/dev/null 2>&1; then log "touchegg daemon+client running"; else warn "touchegg not running (check daemon)"; fi
+# Exactly one client (bare `touchegg` cmdline; `pgrep -x` would also match --daemon).
+if ! pgrep -f 'touchegg$' >/dev/null 2>&1; then
+    nohup touchegg >/tmp/touchegg.log 2>&1 & disown 2>/dev/null; sleep 0.5
+fi
+if pgrep -f 'touchegg$' >/dev/null 2>&1; then log "touchegg client running (exactly one)"; else warn "touchegg client not running (gestures dead — check daemon)"; fi
+
+# ---------------------------------------------------------------------------
+# 5b. dunst monochrome theme — black/white popups instead of default blue/red
+# ---------------------------------------------------------------------------
+log "Installing dunst monochrome theme..."
+mkdir -p "$HOME/.config/dunst" 2>/dev/null || true
+if [[ -f "$REPO_ROOT/configs/dunst/dunstrc" ]]; then
+    cp "$REPO_ROOT/configs/dunst/dunstrc" "$HOME/.config/dunst/dunstrc" 2>/dev/null \
+        && log "Installed ~/.config/dunst/dunstrc (monochrome popups)"
+    # dunst only reads config on (re)start: restart live inside a session,
+    # otherwise dwm-session picks it up at next login.
+    if [[ -n "${DISPLAY:-}" ]] && command -v dunst >/dev/null 2>&1; then
+        pkill -x dunst 2>/dev/null || true; sleep 0.5
+        nohup dunst >/tmp/dunst.log 2>&1 & disown 2>/dev/null; sleep 0.5
+        pgrep -x dunst >/dev/null 2>&1 \
+            && log "dunst restarted with monochrome theme" \
+            || warn "dunst not running (starts at next login via dwm-session)"
+    else
+        log "dunst theme applies at next graphical login (no DISPLAY now)"
+    fi
+else
+    warn "configs/dunst/dunstrc not found — skip dunst theme"
+fi
+
+# ---------------------------------------------------------------------------
+# 5c. reminderd — reinstall + restart so fixes reach the live daemon
+# ---------------------------------------------------------------------------
+# dwm-session starts reminderd once per login but never restarts it, so a
+# reinstall alone would leave the stale daemon running until logout.
+log "Restarting reminderd (hourly chime + reminders)..."
+pkill -f "/etc/ly/reminderd" 2>/dev/null || pkill -f "reminderd" 2>/dev/null || true
+sleep 0.5
+if [[ -x /etc/ly/reminderd ]]; then
+    nohup /etc/ly/reminderd >/tmp/reminderd.log 2>&1 & disown 2>/dev/null; sleep 0.5
+fi
+_rem_cnt="$(pgrep -c -f '/etc/ly/reminderd' 2>/dev/null || true)"
+_rem_cnt="${_rem_cnt:-0}"
+if [[ "$_rem_cnt" == "1" ]]; then
+    log "reminderd running (single instance)"
+else
+    warn "reminderd count=${_rem_cnt} (want 1 — starts at next login via dwm-session)"
+fi
+unset _rem_cnt
 
 # ---------------------------------------------------------------------------
 # 6. Summary
@@ -180,7 +240,7 @@ echo "    Super+1..9     -> tags 1-9"
 echo "    Super+minus    -> tag 10"
 echo "    Super+Shift+c  -> close window"
 echo "    Super+Shift+q  -> quit dwm"
-echo "    Super+Shift+x  -> lock screen (slock)"
+echo "    Super+Shift+x  -> lock screen (slock, black, apps keep running)"
 echo ""
 echo "  LAPTOP FUNCTION KEYS (work everywhere):"
 echo "    Vol+/- / Mute / MicMute -> wpctl (PipeWire)"
@@ -189,20 +249,19 @@ echo "    Play/Pause/Next/Prev    -> playerctl (mpv/spotify/etc)"
 echo "    PrintScr                -> full screenshot  (~/Pictures)"
 echo "    Shift+PrintScr          -> select-area screenshot"
 echo "    XF86 Calculator         -> bc in terminal"
-echo "    XF86 Display / Sleep / Lock / Touchpad -> xrandr / suspend / slock / xinput"
+echo "    XF86 Display / Sleep / Lock / Touchpad -> xrandr / suspend / screen-lock / xinput"
 echo ""
 echo "  TRACKPAD GESTURES (touchegg system daemon + user client, config at"
 echo "    ~/.config/touchegg/touchegg.conf):"
-echo "    3-finger up         -> zoom window to master (Super+Ctrl+Return)"
-echo "    3-finger down       -> close window (Super+Shift+c)"
-echo "    3-finger left/right -> prev/next tag (Super+Ctrl+Left/Right, shiftview)"
+echo "    3-finger swipe left  -> next tag (inverted)"
+echo "    3-finger swipe right -> prev tag (inverted)"
 echo ""
 echo ""
 echo "  EXTRAS:"
 echo "    Verify install: bash scripts/doctor.sh | Checklist: docs/first-boot-checklist.md"
 echo "    Statusline hidden by default -> Super+F12 toggles it"
 echo "    Key remaps: ESC <-> CapsLock, Alt <-> Ctrl (dwm-session runs keyswap.sh)"
-echo "    Power button -> lock (slock) via acpid, not shutdown"
+echo "    Power button -> lock screen (slock, black) via acpid, apps keep running, not shutdown"
 echo "    Hourly time notifications + reminders: remind add 15:00 Break time!"
 echo "      (remind once HH:MM msg | remind list | remind del N)"
 echo ""

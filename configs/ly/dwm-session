@@ -6,10 +6,13 @@
 # Ensure npm global and local bin are in PATH for dwm-spawned helpers (super-clipboard, remind, etc.)
 export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/.bin:/usr/local/bin:$PATH"
 
-# Touchegg daemon — must run inside the user session for xdotool to work.
-# Arch's packaged /etc/xdg/autostart/touchegg.desktop does this too; the
-# pgrep guard avoids a second instance.
-pgrep -x touchegg >/dev/null 2>&1 || { nohup touchegg >/tmp/touchegg.log 2>&1 & disown; }
+# Touchegg client — exactly one per session. NOTE: match the bare `touchegg`
+# command line, NOT `pgrep -x touchegg` (that also matches the --daemon, so a
+# running daemon alone would wrongly suppress the client and gestures would
+# silently die; two clients would fire every gesture twice and skip tags).
+# Arch's packaged /etc/xdg/autostart/touchegg.desktop may also start one; the
+# guard below keeps it at exactly one either way.
+pgrep -f 'touchegg$' >/dev/null 2>&1 || { nohup touchegg >/tmp/touchegg.log 2>&1 & disown; }
 
 # Pure black background — no wallpaper, no compositor needed
 xsetroot -solid "#000000"
@@ -51,21 +54,29 @@ else
     pgrep -f super-enter-live.py >/dev/null 2>&1 || nohup python3 "$HOME/.local/bin/super-enter-live.py" >/tmp/super-enter-live.log 2>&1 &
 fi
 
-# systemd user services (keypress-sound etc.): the session must import the
-# environment (DISPLAY etc.) and start graphical-session.target for user
-# units bound to it to launch. No-op-safe when run repeatedly.
+# systemd user services (keypress-sound etc.) + terminal autostart.
+# The session must import the environment (DISPLAY etc.) and start
+# graphical-session.target for user units bound to it to launch.
+# No-op-safe when run repeatedly.
+# Boot autostart: exactly 1 alacritty on login. The systemd user service
+# (configs/systemd/alacritty-autostart.service, enabled by scripts/bin-copy.sh)
+# is the preferred path, but it silently fails when the user bus isn't ready
+# at install time or DISPLAY isn't imported — which is why "no terminal after
+# login" happened: the old code did NOTHING when the service was enabled,
+# trusting systemd blindly. Now: start the target, give the service a moment,
+# then fall back to a direct launch guarded by pgrep so we always end with 1.
 systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP 2>/dev/null || true
 systemctl --user start graphical-session.target 2>/dev/null || true
-
-# Boot autostart: exactly 1 alacritty on login. Preferred path is the systemd
-# user service (configs/systemd/alacritty-autostart.service, enabled by
-# scripts/bin-copy.sh) which starts via graphical-session.target above.
-# Fallback `alacritty &` runs ONLY when that service is missing/disabled,
-# guarded by pgrep so we never open 2 terminals at boot.
-if systemctl --user is-enabled alacritty-autostart.service >/dev/null 2>&1; then
-    : # systemd handles it — do nothing here
-else
-    pgrep -x alacritty >/dev/null 2>&1 || { nohup alacritty >/tmp/alacritty-autostart.log 2>&1 & disown; }
+# Give alacritty-autostart.service up to ~2s to appear (systemd path).
+for _i in 1 2 3 4; do
+    pgrep -x alacritty >/dev/null 2>&1 && break
+    sleep 0.5
+done
+unset _i
+if ! pgrep -x alacritty >/dev/null 2>&1; then
+    if command -v alacritty >/dev/null 2>&1; then
+        nohup alacritty >/tmp/alacritty-autostart.log 2>&1 & disown
+    fi
 fi
 
 # Start dwm (replaces this shell)

@@ -1,0 +1,87 @@
+#!/bin/sh
+# screen-lock — lock the X session WITHOUT closing apps (slock, black screen).
+# Unlock with your normal login password. The dwm session keeps running
+# underneath, so break-time locking never loses work.
+#
+# slock takes no arguments and shows no UI: screen goes BLACK while locked,
+# flashes RED on a wrong password. (Black comes from our custom build,
+# scripts/slock-build.sh — stock slock locks blue.)
+#
+# Used by:
+#   - configs/acpi/power-btn.sh (power button -> lock, never poweroff)
+#   - dwm lockcmd (Super+Shift+X, XF86 ScreenSaver -> lock)
+#
+# When run as root (acpid) it finds the graphical user and their
+# DISPLAY/XAUTHORITY itself; when run as the user (dwm keybinding) the
+# environment is already correct.
+#
+# Usage: screen-lock [--test]   (--test = dry run, locks nothing)
+
+LOG=/tmp/screen-lock.log
+log() { echo "$(date '+%F %T') screen-lock: $*" >>"$LOG" 2>/dev/null; logger -t screen-lock "$*" 2>/dev/null || true; }
+
+TEST=0
+[ "${1:-}" = "--test" ] && TEST=1
+
+if ! command -v slock >/dev/null 2>&1; then
+    log "slock MISSING — cannot lock (repo: sudo pacman -S --needed slock; black theme: bash scripts/slock-build.sh)"
+    [ "$TEST" = "1" ] && echo "TEST: FAIL — slock not installed"
+    command -v notify-send >/dev/null 2>&1 && notify-send -t 3000 'screen-lock' 'slock missing — install it' 2>/dev/null || true
+    exit 1
+fi
+
+# Already running as the session user inside X? Just lock.
+if [ "$(id -u 2>/dev/null)" != "0" ] && [ -n "${DISPLAY:-}" ]; then
+    [ "$TEST" = "1" ] && { echo "TEST: would run: slock (as $USER on $DISPLAY)"; exit 0; }
+    log "locking as $USER on $DISPLAY"
+    exec slock
+fi
+
+# --- Running as root (acpid): find the graphical user + X creds ---------------
+user="$(ps -o user= -C dwm 2>/dev/null | head -1 | tr -d ' ')"
+if [ -z "$user" ] && command -v loginctl >/dev/null 2>&1; then
+    sess="$(loginctl list-sessions --no-legend 2>/dev/null | awk '$3 != "" {print $1}' | head -1)"
+    [ -n "$sess" ] && user="$(loginctl show-session "$sess" -p Name --value 2>/dev/null)"
+fi
+if [ -z "$user" ] || [ "$user" = "root" ]; then
+    u2="$(who 2>/dev/null | awk '{print $1}' | head -1)"
+    [ -n "$u2" ] && [ "$u2" != "root" ] && user="$u2"
+fi
+
+if [ -z "$user" ] || [ "$user" = "root" ]; then
+    # Nobody logged in graphically: ly greeter is already showing. Do nothing
+    # (and crucially, never power off — logind is set to ignore the key).
+    log "no graphical user — ly already showing, doing nothing"
+    [ "$TEST" = "1" ] && echo "TEST: no graphical session (ly already showing) — would do nothing"
+    exit 0
+fi
+
+DISP=""
+XAUTH=""
+dwm_pid="$(pgrep -u "$user" -x dwm 2>/dev/null | head -1)"
+if [ -n "$dwm_pid" ] && [ -f "/proc/$dwm_pid/environ" ]; then
+    DISP="$(tr '\0' '\n' < "/proc/$dwm_pid/environ" 2>/dev/null | grep '^DISPLAY=' | cut -d= -f2- | head -1)"
+    XAUTH="$(tr '\0' '\n' < "/proc/$dwm_pid/environ" 2>/dev/null | grep '^XAUTHORITY=' | cut -d= -f2- | head -1)"
+fi
+[ -z "$DISP" ] && DISP=":0"
+if [ -z "$XAUTH" ]; then
+    user_home="$(getent passwd "$user" 2>/dev/null | cut -d: -f6)"
+    [ -z "$user_home" ] && user_home="/home/$user"
+    [ -f "$user_home/.Xauthority" ] && XAUTH="$user_home/.Xauthority"
+fi
+
+if [ "$TEST" = "1" ]; then
+    echo "TEST: would run: slock as $user on DISPLAY=$DISP XAUTHORITY=${XAUTH:-<unset>}"
+    exit 0
+fi
+
+log "locking as $user on $DISP"
+if command -v runuser >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    exec runuser -u "$user" -- env DISPLAY="$DISP" ${XAUTH:+XAUTHORITY="$XAUTH"} slock
+elif command -v sudo >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    exec sudo -u "$user" env DISPLAY="$DISP" ${XAUTH:+XAUTHORITY="$XAUTH"} slock
+else
+    exec su -s /bin/sh "$user" -c "DISPLAY='$DISP' ${XAUTH:+XAUTHORITY='$XAUTH'} exec slock"
+fi

@@ -9,13 +9,23 @@
 
 REM_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dwm"
 LOCK_FILE="$REM_DIR/.reminders.lock"
+SINGLETON_LOCK="$REM_DIR/.reminderd.lock"
 REM_FILE="$REM_DIR/reminders.txt"
 mkdir -p "$REM_DIR"
 touch "$REM_FILE"
 
+# Single instance: a second copy (e.g. after `pkill dwm` + session restart
+# without logout) would double-fire every chime/reminder. The loser exits.
+# NOTE: separate file from LOCK_FILE below — the per-iteration mutex must be
+# lockable while this lifetime lock is held (same file would self-conflict).
+exec 9>"$SINGLETON_LOCK" 2>/dev/null || true
+if command -v flock >/dev/null 2>&1; then
+    flock -n 9 2>/dev/null || exit 0
+fi
+
 notify() {
-    # notify <title> <message>
-    command -v notify-send >/dev/null 2>&1 && notify-send -t 8000 "$1" "$2"
+    # notify <timeout-ms> <title> <message>
+    command -v notify-send >/dev/null 2>&1 && notify-send -t "$1" "$2" "$3"
 }
 
 last_hour=""
@@ -27,18 +37,21 @@ while :; do
     # --- hourly time notification (only once per clock hour) ---
     if [ "$hour" != "$last_hour" ]; then
         last_hour="$hour"
-        # skip the first loop iteration right after login (mid-hour start)
+        # skip the first loop iteration right after login (mid-hour start);
+        # 30s timeout so the chime is actually seen, not blinked past.
         if [ "$_skip_first" = "1" ]; then
-            notify "$now" "Time check"
+            notify 30000 "$now" "Time check"
         fi
         _skip_first=1
     fi
 
     # --- user reminders ---
     if [ -s "$REM_FILE" ]; then
-        # flock to avoid race with remind CLI
-        exec 9>"$LOCK_FILE" 2>/dev/null || true
-        flock -n 9 2>/dev/null || true
+        # separate lock fd so remind-CLI edits interleave safely
+        exec 8>"$LOCK_FILE" 2>/dev/null || true
+        if command -v flock >/dev/null 2>&1; then
+            flock -n 8 2>/dev/null || { sleep 2; continue; }
+        fi
         n=0
         tmp="$REM_FILE.tmp"
         : > "$tmp"
@@ -50,7 +63,7 @@ while :; do
             rmsg=$(printf '%s' "$line" | cut -d'|' -f3- | sed 's/^ *//')
 
             if [ "$rtime" = "$now" ]; then
-                notify "Reminder ($rtime)" "$rmsg"
+                notify 8000 "Reminder ($rtime)" "$rmsg"
                 # 'once' reminders are not copied to the new file -> removed
                 [ "$rtype" = "daily" ] && printf '%s\n' "$line" >> "$tmp"
             else
@@ -58,9 +71,13 @@ while :; do
             fi
         done < "$REM_FILE"
         mv "$tmp" "$REM_FILE"
-        flock -u 9 2>/dev/null || true
+        if command -v flock >/dev/null 2>&1; then
+            flock -u 8 2>/dev/null || true
+        fi
     fi
 
-    # sleep until the next minute boundary (accurate, low CPU)
-    sleep "$((60 - $(date +%S)))"
+    # sleep until the next minute boundary (accurate, low CPU).
+    # 10# forces decimal: %S is zero-padded and 08/09 are invalid octal,
+    # which used to abort this sleep twice an hour.
+    sleep "$((60 - 10#$(date +%S)))"
 done

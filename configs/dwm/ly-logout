@@ -1,0 +1,75 @@
+#!/bin/sh
+# ly-logout — return to the ly login greeter ("ly as lock screen").
+#
+# ly has no session locker: it is a login manager, not a screen locker.
+# Ending the graphical session makes ly redisplay its greeter, and a
+# password is required to log back in — that is the ly-native equivalent
+# of locking.
+#
+# Used by:
+#   - configs/acpi/power-btn.sh (power button -> ly, never poweroff)
+#   - dwm lockcmd (Super+Shift+X, XF86 ScreenSaver -> ly)
+#
+# Usage: ly-logout [--test]   (--test = dry run, prints what it would do)
+
+LOG=/tmp/ly-logout.log
+log() { echo "$(date '+%F %T') ly-logout: $*" >>"$LOG" 2>/dev/null; logger -t ly-logout "$*" 2>/dev/null || true; }
+
+TEST=0
+[ "${1:-}" = "--test" ] && TEST=1
+
+# --- 1. Find the graphical (X11/Wayland) logind session, if any ---------------
+find_graphical_session() {
+    command -v loginctl >/dev/null 2>&1 || return 1
+    _sess=""
+    # Prefer an X11/Wayland session ...
+    for _s in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'); do
+        _t="$(loginctl show-session "$_s" -p Type --value 2>/dev/null)"
+        case "$_t" in
+            x11|wayland|mir) echo "$_s"; return 0 ;;
+        esac
+    done
+    # ... fall back to any active session ...
+    for _s in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'); do
+        _st="$(loginctl show-session "$_s" -p State --value 2>/dev/null)"
+        [ "$_st" = "active" ] && { echo "$_s"; return 0; }
+    done
+    # ... fall back to the session of the user running dwm.
+    _u="$(ps -o user= -C dwm 2>/dev/null | head -1 | tr -d ' ')"
+    if [ -n "$_u" ]; then
+        _s="$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$_u" '$3==u {print $1}' | head -1)"
+        [ -n "$_s" ] && { echo "$_s"; return 0; }
+    fi
+    return 1
+}
+
+SESS=""
+# Fast path: our own session (dwm keybinding runs as the logged-in user).
+if [ -n "${XDG_SESSION_ID:-}" ]; then
+    SESS="$XDG_SESSION_ID"
+else
+    SESS="$(find_graphical_session)" || SESS=""
+fi
+
+if [ -z "$SESS" ]; then
+    # No graphical session: ly greeter is already showing. Nothing to do.
+    log "no graphical session found — ly already up, doing nothing"
+    [ "$TEST" = "1" ] && echo "TEST: no graphical session (ly already showing) — would do nothing"
+    exit 0
+fi
+
+if [ "$TEST" = "1" ]; then
+    echo "TEST: would run: loginctl terminate-session $SESS (back to ly greeter)"
+    exit 0
+fi
+
+# --- 2. End the session -> ly redisplays its greeter ---------------------------
+log "terminating graphical session $SESS (back to ly greeter)"
+loginctl terminate-session "$SESS" 2>/dev/null || true
+sleep 2
+# Safety net: if dwm survived (odd session setups), end it directly.
+if pgrep -x dwm >/dev/null 2>&1; then
+    log "dwm still alive — killing dwm directly"
+    pkill -x dwm 2>/dev/null || true
+fi
+exit 0

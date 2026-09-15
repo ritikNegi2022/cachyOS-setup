@@ -1,1 +1,6 @@
 __pycache__/
+# NEVER commit a private SSH key — only the .pub reference is tracked.
+configs/ssh/git_blank
+*.pem
+*.key
+.ssh/

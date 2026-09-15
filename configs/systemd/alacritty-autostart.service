@@ -13,9 +13,11 @@
 
 [Unit]
 Description=Alacritty terminal autostart (boot/login)
+# Bound to the graphical session dwm-session starts at login.
+# NOTE: no Wants=graphical-session.target here — that is circular
+# (this unit is WantedBy the target) and prevented startup on some systems.
 PartOf=graphical-session.target
 After=graphical-session.target
-Wants=graphical-session.target
 
 [Service]
 Type=simple

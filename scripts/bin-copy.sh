@@ -105,6 +105,31 @@ if [[ -f "$CKSUM_FILE" ]] && [[ "$REPO_INSTALLED" -eq ${#REPO_BINARIES[@]} ]]; t
 fi
 
 # ---------------------------------------------------------------------------
+# 2a. GUI launcher shims — packages whose binaries live outside PATH
+# ---------------------------------------------------------------------------
+# Some GUI packages install under odd paths or names, so neither the terminal
+# nor dwm (which uses ~/.bin in its PATH) can launch them by their known name:
+#   pgadmin4 -> /usr/pgadmin4/bin/pgadmin4   (pgadmin4-desktop AUR package)
+#   zed      -> /usr/bin/zeditor             (zED package binary is "zeditor")
+# A symlink in ~/.bin fixes terminal + dwm + scripts uniformly. Never
+# overwrites a real file; stale links (target uninstalled) are skipped/kept.
+link_shim() {
+    local _name="$1" _target="$2"
+    local _dst="$BIN_DST/$_name"
+    if [[ -e "$_dst" && ! -L "$_dst" ]]; then
+        log "  Shim skipped: $_dst exists as a real file"
+    elif [[ -x "$_target" ]]; then
+        ln -sfn "$_target" "$_dst"
+        log "  Shim: $_name -> $_target"
+    else
+        warn "  Shim skipped: target missing $_target (install the package first)"
+    fi
+}
+link_shim "pgadmin4" "/usr/pgadmin4/bin/pgadmin4"
+link_shim "zed" "/usr/bin/zeditor"
+unset -f link_shim
+
+# ---------------------------------------------------------------------------
 # 2b. Optional personal binaries from the OLD system's ~/.bin
 # ---------------------------------------------------------------------------
 BINARIES=(
@@ -237,6 +262,9 @@ fi
 # ---------------------------------------------------------------------------
 # 3.6 alacritty autostart: launch terminal at boot/login (user service)
 # ---------------------------------------------------------------------------
+# The systemd user unit is the preferred path; configs/ly/dwm-session also has
+# a pgrep-guarded direct `alacritty &` fallback so login still yields exactly
+# 1 terminal even if the user bus was unavailable at install time.
 ALAC_UNIT_SRC="$REPO_ROOT/configs/systemd/alacritty-autostart.service"
 ALAC_UNIT_DST="$HOME/.config/systemd/user/alacritty-autostart.service"
 if [[ -f "$ALAC_UNIT_SRC" ]]; then
@@ -247,6 +275,10 @@ if [[ -f "$ALAC_UNIT_SRC" ]]; then
         systemctl --user enable alacritty-autostart.service 2>/dev/null \
             && log "alacritty-autostart: user service enabled (terminal at every login)" \
             || warn "alacritty-autostart: could not enable (no session bus? enable manually: systemctl --user enable --now alacritty-autostart)"
+        # Linger lets the user manager run even if install ran outside a login
+        # session; harmless when already enabled. Needs root for other users,
+        # no-op for self without privileges.
+        loginctl enable-linger "$USER" 2>/dev/null || sudo loginctl enable-linger "$USER" 2>/dev/null || true
     fi
 else
     warn "alacritty-autostart unit template missing — service not installed"

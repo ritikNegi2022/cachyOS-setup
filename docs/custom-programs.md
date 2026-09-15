@@ -4,10 +4,10 @@
 
 ## 1. `remind` + `reminderd` — hourly chime + user reminders
 
-**Files:** `configs/dwm/remind:1` (CLI) → `/usr/local/bin/remind`, `configs/dwm/reminderd:1` → `/etc/ly/reminderd`, `~/.config/dwm/reminders.txt`, started by `configs/ly/dwm-session:33` (`/etc/ly/reminderd &`).
+**Files:** `configs/dwm/remind:1` (CLI) → `/usr/local/bin/remind`, `configs/dwm/reminderd:1` → `/etc/ly/reminderd`, `~/.config/dwm/reminders.txt`, started by `configs/ly/dwm-session:33` (`/etc/ly/reminderd &`), restarted live by `dwm-config.sh`/`apply-privileged.sh` on reinstall. Single instance via lockfile (duplicates exit instead of double-firing).
 
 **What it does:**
-- `reminderd` runs as a per-session daemon. Every hour at `:00` it sends `notify-send "HH:MM" "Time check"` via `dunst`.
+- `reminderd` runs as a per-session daemon. Every hour at `:00` it sends `notify-send -t 30000 "HH:MM" "Time check"` via `dunst` (30s so it's actually seen).
 - It also watches `~/.config/dwm/reminders.txt` every minute for user reminders.
 
 **Format `reminders.txt`:**
@@ -34,7 +34,7 @@ remind list
 remind once  $(date -d '+1 min' +%H:%M) "test reminder"
 ```
 
-**Troubleshoot:** `pgrep -f reminderd` should show it; `cat /tmp/…` no log — check `dunst` running (`pgrep -x dunst`), `notify-send -t 8000 "title" "msg"` should pop.
+**Troubleshoot:** `pgrep -f reminderd` must show exactly 1 (0 = dead, 2+ = duplicates — re-run `scripts/dwm-config.sh`); past firings: `dunstctl history | grep -E 'Time check|Reminder'`; `cat /tmp/…` no log — check `dunst` running (`pgrep -x dunst`), `notify-send -t 8000 "title" "msg"` should pop.
 
 ---
 
@@ -91,25 +91,28 @@ Verify: `xmodmap -pk | grep -E "9|66|37|64"` → `9 Caps_Lock`, `66 Escape`, `37
 
 ---
 
-## 5. `touchegg` — 3-finger gestures
+## 5. `touchegg` — 3-finger gestures (left/right only, inverted)
 
-**Files:** `configs/touchegg.conf:1` → `~/.config/touchegg/touchegg.conf` (user config, not `/etc/touchegg/`), daemon `touchegg --daemon` (system `touchegg.service` Group=input), client `touchegg` (user, started by `dwm-session:12` + autostart).
+**Files:** `configs/touchegg.conf:1` → `~/.config/touchegg/touchegg.conf` (user config, not `/etc/touchegg/`), daemon `touchegg --daemon` (system `touchegg.service` Group=input, or single user fallback), exactly one client `touchegg` (user, started by `dwm-session` + autostart, guarded so duplicates can't exist).
 
-**Gestures:**
+**Gestures (inverted — no up/down):**
 | 3-finger | Action | `xdotool` |
 |---|---|---|
-| swipe up | zoom to master | `super+ctrl+Return` (`shiftview` zoom) |
-| swipe down | close window | `super+shift+c` |
-| swipe left | prev tag | `super+ctrl+Left` (`shiftview -1`) |
-| swipe right | next tag | `super+ctrl+Right` (`shiftview +1`) |
+| swipe left | next tag | `super+ctrl+Right` (`shiftview +1`) |
+| swipe right | prev tag | `super+ctrl+Left` (`shiftview -1`) |
 
-**Fix if dead:**
+Config fires on swipe start (`action_execute_threshold=0`) so short swipes always trigger.
+
+**Fix if flaky/dead:**
 ```bash
 systemctl status touchegg            # daemon should be active (root, Group=input)
 systemctl enable --now touchegg      # as root
 groups                               # user should be in input for fallback user daemon
 cat ~/.config/touchegg/touchegg.conf
-pgrep -a touchegg                     # should show --daemon + client
+pgrep -a touchegg                    # want EXACTLY: one --daemon + one bare client
+# duplicates = flaky: two daemons split events (swipes randomly lost),
+# two clients double-fire (tags skip). Fix: re-run scripts/dwm-config.sh
+# (kills all, restarts one of each), then log out/in.
 ```
 
 ---
@@ -121,20 +124,21 @@ pgrep -a touchegg                     # should show --daemon + client
 - **`locale`** `configs/locale/locale.conf:1` → `/etc/locale.conf` `LANG=en_IN.UTF-8` (fixes `btop` `No UTF-8`).
 - **`xorg` natural scroll** `configs/xorg/30-natural-scroll.conf:1` → `/etc/X11/xorg.conf.d/`.
 
-## 7. Power button → lock (not shutdown)
+## 7. Power button → lock screen (not shutdown, apps kept)
 
-**Files:** `configs/acpi/power:1` `event=button/power` `action=/etc/acpi/power-btn.sh`, `configs/acpi/power-btn.sh:1` (`sudo -u $user env DISPLAY=:0 XAUTHORITY=… slock` + `systemctl suspend` fallback), `configs/systemd/logind.conf.d/10-powerkey.conf:1` `[Login] HandlePowerKey=ignore` → `/etc/systemd/logind.conf.d/10-powerkey.conf`, `acpid.service` + `systemd-logind`.
+**Files:** `configs/acpi/power:1` `event=button/power` `action=/etc/acpi/power-btn.sh`, `configs/acpi/power-btn.sh:1` (calls `screen-lock`), `configs/dwm/screen-lock:1` (plain `slock`, black custom build from `scripts/slock-build.sh`; finds user + DISPLAY/XAUTHORITY itself when run as root), `configs/systemd/logind.conf.d/10-powerkey.conf:1` `[Login] HandlePowerKey=ignore` → `/etc/systemd/logind.conf.d/10-powerkey.conf`, `acpid.service` + `systemd-logind`.
 
-**Why:** `logind.conf` default `HandlePowerKey=poweroff` makes `systemd-logind` shutdown on power press, inhibiting `acpid` (`button/power`). This repo overrides to `ignore` so `acpid` handles it → `slock` (lock, not shutdown). Without it, power button shuts down even with `acpid` enabled.
+**Why:** `logind.conf` default `HandlePowerKey=poweroff` makes `systemd-logind` shutdown on power press, inhibiting `acpid` (`button/power`). This repo overrides to `ignore` so `acpid` handles it → `screen-lock` (slock, black: session stays alive, unlock with password; wrong password flashes red). Without it, power button shuts down even with `acpid` enabled. Same helper backs `Super+Shift+X` / `XF86ScreenSaver` in dwm. (`ly-logout` remains as a manual logout-to-greeter tool — that one does close apps.)
 
-**Install:** `scripts/dwm-config.sh:47` `pacman -S acpid` `install power-btn.sh` `install power` `systemctl enable --now acpid` `mkdir -p /etc/systemd/logind.conf.d` `cp 10-powerkey.conf` `kill -HUP systemd-logind`.
+**Install:** `scripts/slock-build.sh` (black build → `/usr/local/bin/slock`) + `scripts/dwm-config.sh:47` `pacman -S acpid slock` `install screen-lock` `install ly-logout` `install power-btn.sh` `install power` `systemctl enable --now acpid` `mkdir -p /etc/systemd/logind.conf.d` `cp 10-powerkey.conf` `kill -HUP systemd-logind`.
 
 **Test:**
 ```bash
 cat /etc/acpi/events/power; cat /etc/acpi/power-btn.sh | head -n 20
 cat /etc/systemd/logind.conf.d/10-powerkey.conf
 systemctl status acpid; systemctl is-enabled acpid; systemd-analyze cat-config systemd/logind.conf | grep HandlePowerKey
-# press power → should slock, not poweroff; `journalctl -u acpid -n 20` shows event
+screen-lock --test  # dry run: shows what would be locked, locks nothing
+# press power → black slock screen, session alive; `journalctl -u acpid -n 20` shows event
 ```
 
 ## 8. Full Package Inventory — every program `setup.sh` installs and why
@@ -189,7 +193,7 @@ systemctl status acpid; systemctl is-enabled acpid; systemd-analyze cat-config s
 | `maim` + `slop` | screenshots `Print`/`Shift+Print` |
 | `xdg-utils` | `xdg-open` |
 | `libnotify` | `notify-send` |
-| `slock` | screen lock `Super+Shift+x` + power button `acpid` |
+| `screen-lock` (repo script → `slock` black) | lock screen `Super+Shift+x` + power button `acpid`, apps kept |
 | `bc` | calculator `XF86Calculator` |
 
 ### Dev Toolchain (`install.sh:73`)
@@ -246,7 +250,7 @@ systemctl status acpid; systemctl is-enabled acpid; systemd-analyze cat-config s
 | Service | Package |
 |---|---|
 | `bluetooth.service` `NetworkManager` `avahi-daemon` | `bluez` `networkmanager` |
-| `acpid.service` | `acpid` power button → `slock` |
+| `acpid.service` | `acpid` power button → `screen-lock` (`slock` black) |
 | `ly@tty1.service` `graphical.target` | `ly` |
 | `touchegg.service` `Group=input` | `touchegg` gestures + `input` group |
 | `postgresql.service` | `postgresql` `initdb` `pg_hba trust` `api_watch` DBs |

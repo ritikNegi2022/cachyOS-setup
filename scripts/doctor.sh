@@ -75,14 +75,44 @@ else
     warn "/etc/acpi/events/power missing or wrong (power button may shut down!)"
 fi
 if have_file /etc/systemd/logind.conf.d/10-powerkey.conf && grep -q "HandlePowerKey=ignore" /etc/systemd/logind.conf.d/10-powerkey.conf 2>/dev/null; then
-    pass "logind HandlePowerKey=ignore (power button → slock via acpid, not shutdown)"
+    pass "logind HandlePowerKey=ignore (power button → ly via acpid, not shutdown)"
 else
     warn "logind HandlePowerKey not ignore — power button may still shutdown (run dwm-config.sh / apply-privileged.sh)"
 fi
-if have_file /etc/acpi/power-btn.sh && grep -q "slock" /etc/acpi/power-btn.sh 2>/dev/null; then
-    pass "acpi power-btn.sh → slock (lock, not shutdown)"
+if have_file /etc/acpi/power-btn.sh && grep -q "screen-lock" /etc/acpi/power-btn.sh 2>/dev/null; then
+    pass "acpi power-btn.sh → screen-lock (lock, apps kept, not shutdown)"
 else
-    warn "acpi power-btn.sh missing slock"
+    warn "acpi power-btn.sh missing screen-lock (re-run scripts/dwm-config.sh)"
+fi
+# Repo copy must also point at screen-lock (else reinstall breaks locking)
+if have_file "$REPO_ROOT/configs/acpi/power-btn.sh"; then
+    if grep -q "screen-lock" "$REPO_ROOT/configs/acpi/power-btn.sh" 2>/dev/null; then
+        pass "repo power-btn.sh → screen-lock"
+    else
+        warn "repo configs/acpi/power-btn.sh does not use screen-lock"
+    fi
+fi
+if have_exec /usr/local/bin/screen-lock; then
+    pass "screen-lock installed (/usr/local/bin/screen-lock)"
+else
+    warn "screen-lock missing (power button + Super+Shift+X won't lock; re-run scripts/dwm-config.sh)"
+fi
+if have_exec /usr/local/bin/ly-logout; then
+    pass "ly-logout installed (/usr/local/bin/ly-logout, manual logout-to-greeter)"
+else
+    info "ly-logout not installed (optional manual logout tool; re-run scripts/dwm-config.sh)"
+fi
+if grep -q '"screen-lock"' "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    pass "dwm lock keys (Super+Shift+X, ScreenSaver) → screen-lock (slock, apps kept)"
+else
+    warn "dwm config.h lock keys don't use screen-lock (rebuild with scripts/dwm-build.sh)"
+fi
+# Custom slock build: lock screen must be BLACK (#000000), not stock blue.
+# /usr/local/bin/slock (ours) shadows /usr/sbin/slock (repo fallback).
+if [[ -x /usr/local/bin/slock ]] && strings /usr/local/bin/slock 2>/dev/null | grep -q '#000000'; then
+    pass "custom slock build present (black lock screen)"
+else
+    warn "custom slock build missing — lock screen is stock blue (fix: bash scripts/slock-build.sh)"
 fi
 if have_file /etc/X11/xorg.conf.d/30-natural-scroll.conf && grep -q 'NaturalScrolling.*true' /etc/X11/xorg.conf.d/30-natural-scroll.conf 2>/dev/null; then
     pass "natural (inverted) scrolling Xorg config installed"
@@ -130,6 +160,24 @@ if have_file "$REPO_ROOT/docs/custom-programs.md"; then
 else
     warn "repo docs/custom-programs.md missing"
 fi
+# Full system guide (this-is-how-everything-works manual) alongside the others
+for sg in "$HOME/Documents/system-guide.md" "$HOME/system-guide.md" "/usr/share/doc/cachyOS-setup/system-guide.md"; do
+    if have_file "$sg"; then pass "system guide doc: $sg"; else warn "system guide doc missing: $sg (re-run setup.sh step 5)"; fi
+done
+if have_file "$REPO_ROOT/docs/system-guide.md"; then
+    pass "repo docs/system-guide.md present"
+else
+    warn "repo docs/system-guide.md missing"
+fi
+# Manual-tasks runbook (post-setup human steps) alongside the other docs
+for as in "$HOME/Documents/after-setup.md" "$HOME/after-setup.md" "/usr/share/doc/cachyOS-setup/after-setup.md"; do
+    if have_file "$as"; then pass "after-setup doc: $as"; else warn "after-setup doc missing: $as (re-run setup.sh step 5)"; fi
+done
+if have_file "$REPO_ROOT/docs/after-setup.md"; then
+    pass "repo docs/after-setup.md present"
+else
+    warn "repo docs/after-setup.md missing"
+fi
 # Reminder program check
 if have_file "$HOME/.config/dwm/reminders.txt" || have_file "/etc/ly/reminderd"; then
     pass "reminder program installed (remind + reminderd)"
@@ -140,6 +188,31 @@ if have_exec /usr/local/bin/remind && have_file /etc/ly/reminderd; then
     pass "remind CLI + daemon present"
 else
     warn "remind CLI or daemon missing"
+fi
+# reminderd must be RUNNING exactly once (hourly chime + reminders depend on it)
+if command -v pgrep >/dev/null 2>&1; then
+    _remc="$(pgrep -c -f '/etc/ly/reminderd' 2>/dev/null || true)"; _remc="${_remc:-0}"
+    if [[ "$_remc" == "1" ]]; then
+        pass "reminderd running (single instance)"
+    elif [[ "$_remc" == "0" ]]; then
+        warn "reminderd NOT running — no hourly chime/reminders (starts at login; fix now: nohup /etc/ly/reminderd >/tmp/reminderd.log 2>&1 &)"
+    else
+        warn "reminderd running ${_remc}x (duplicates double-fire — re-run scripts/dwm-config.sh)"
+    fi
+    unset _remc
+fi
+# installed daemon must contain the hourly chime + singleton guard
+if have_file /etc/ly/reminderd; then
+    if grep -q "Time check" /etc/ly/reminderd 2>/dev/null; then
+        pass "reminderd has hourly chime logic"
+    else
+        warn "/etc/ly/reminderd missing hourly chime (re-run scripts/dwm-config.sh)"
+    fi
+    if grep -q "SINGLETON_LOCK" /etc/ly/reminderd 2>/dev/null; then
+        pass "reminderd has singleton guard (no double-fire)"
+    else
+        warn "/etc/ly/reminderd is stale (no singleton guard — re-run scripts/dwm-config.sh)"
+    fi
 fi
 # dwm Super+Enter terminal binding (both Super+Enter and Super+Shift+Enter)
 if grep -q "MODKEY.*XK_Return.*spawn.*termcmd" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
@@ -204,11 +277,41 @@ if grep -q "brave-browser.*1 << 8" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null
 else
     pass "dwm no auto-tag for browsers/Zed (free placement)"
 fi
-# Touchegg left/right -> tag switching
-if grep -q "super+ctrl+Left" "$REPO_ROOT/configs/touchegg.conf" 2>/dev/null && grep -q "super+ctrl+Right" "$REPO_ROOT/configs/touchegg.conf" 2>/dev/null; then
-    pass "touchegg 3-finger left/right -> prev/next tag (shiftview)"
+# Touchegg: only LEFT/RIGHT swipes (no UP/DOWN), INVERTED mapping
+# (swipe left -> next tag, swipe right -> prev tag), immediate-fire settings.
+_tcfg="$REPO_ROOT/configs/touchegg.conf"
+if grep -q 'direction="UP"' "$_tcfg" 2>/dev/null || grep -q 'direction="DOWN"' "$_tcfg" 2>/dev/null; then
+    warn "touchegg still has UP/DOWN gestures (should be left/right only)"
 else
-    warn "touchegg left/right not bound to tag switching (should be super+ctrl+Left/Right)"
+    pass "touchegg has no UP/DOWN gestures (left/right only)"
+fi
+_left_cmd="$(grep -A4 'direction="LEFT"' "$_tcfg" 2>/dev/null | grep -o 'super+ctrl+[A-Za-z]*' | head -1)"
+_right_cmd="$(grep -A4 'direction="RIGHT"' "$_tcfg" 2>/dev/null | grep -o 'super+ctrl+[A-Za-z]*' | head -1)"
+if [[ "$_left_cmd" == "super+ctrl+Right" && "$_right_cmd" == "super+ctrl+Left" ]]; then
+    pass "touchegg inverted: swipe left -> next tag, swipe right -> prev tag"
+else
+    warn "touchegg left/right mapping wrong (left='$_left_cmd' right='$_right_cmd'; want left=super+ctrl+Right right=super+ctrl+Left)"
+fi
+unset _left_cmd _right_cmd
+if grep -q 'action_execute_threshold" value="0"' "$_tcfg" 2>/dev/null; then
+    pass "touchegg immediate-fire settings present (consistent triggering)"
+else
+    warn "touchegg missing immediate-fire settings (gestures may feel intermittent)"
+fi
+unset _tcfg
+# Exactly one daemon + one client (duplicates = flaky/double-fire gestures).
+# (Zero clients is normal on a TTY with no X session — only >1 is a problem.)
+if command -v pgrep >/dev/null 2>&1; then
+    _daemons="$(pgrep -c -f 'touchegg --daemon' 2>/dev/null || true)"; _daemons="${_daemons:-0}"
+    _clients="$(pgrep -c -f 'touchegg$' 2>/dev/null || true)"; _clients="${_clients:-0}"
+    if [[ "$_daemons" -gt 1 || "$_clients" -gt 1 ]]; then
+        warn "touchegg duplicates running (daemons=$_daemons, clients=$_clients; want <=1 daemon + <=1 client — re-run scripts/dwm-config.sh)"
+    elif [[ -n "${DISPLAY:-}" && "$_clients" -eq 0 ]]; then
+        warn "no touchegg client in this X session (daemons=$_daemons — gestures dead; log out/in)"
+    else
+        pass "touchegg topology OK (daemons=$_daemons, clients=$_clients)"
+    fi
+    unset _daemons _clients
 fi
 if grep -q "shiftview" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
     pass "dwm shiftview (tag-1/tag+1) present"
@@ -295,6 +398,9 @@ else
     ALAC_UNIT2="$HOME/.config/systemd/user/alacritty-autostart.service"
     if have_file "$ALAC_UNIT2"; then
         pass "file: $ALAC_UNIT2"
+        if grep -q "^Wants=graphical-session.target" "$ALAC_UNIT2" 2>/dev/null; then
+            fail "alacritty-autostart.service has circular Wants=graphical-session.target (blocks startup; re-run scripts/bin-copy.sh)"
+        fi
         if command -v systemctl >/dev/null 2>&1 && [ "$(systemctl --user is-enabled alacritty-autostart.service 2>/dev/null)" = "enabled" ]; then
             pass "alacritty-autostart.service enabled (terminal at boot)"
         else
@@ -302,6 +408,30 @@ else
         fi
     else
         warn "alacritty-autostart user unit not installed (should be in configs/systemd/alacritty-autostart.service)"
+    fi
+    # dwm-session must guarantee a terminal even if the user service fails:
+    # old logic did nothing when the service was enabled (trusting systemd).
+    if have_file "$REPO_ROOT/configs/ly/dwm-session"; then
+        if grep -q "is-enabled alacritty-autostart" "$REPO_ROOT/configs/ly/dwm-session" 2>/dev/null; then
+            warn "dwm-session still uses old is-enabled gate (no terminal if service fails — update /etc/ly/dwm-session)"
+        elif grep -q "pgrep -x alacritty" "$REPO_ROOT/configs/ly/dwm-session" 2>/dev/null; then
+            pass "dwm-session guarantees 1 alacritty fallback (pgrep-guarded)"
+        else
+            warn "dwm-session has no alacritty autostart fallback"
+        fi
+    fi
+    if have_file /etc/ly/dwm-session && ! grep -q "pgrep -x alacritty" /etc/ly/dwm-session 2>/dev/null; then
+        warn "/etc/ly/dwm-session missing alacritty fallback (re-run scripts/dwm-config.sh or apply-privileged.sh)"
+    fi
+    # dwm-session must guard the touchegg CLIENT specifically: `pgrep -x touchegg`
+    # also matches the daemon, which either suppresses the client (dead gestures)
+    # or allows a second client (double-fire skips tags). (Ignore comment lines.)
+    if grep -v '^[[:space:]]*#' "$REPO_ROOT/configs/ly/dwm-session" 2>/dev/null | grep -q "pgrep -x touchegg"; then
+        warn "dwm-session uses pgrep -x touchegg (matches daemon too — flaky/double gestures)"
+    elif grep -q "pgrep -f 'touchegg\$'" "$REPO_ROOT/configs/ly/dwm-session" 2>/dev/null; then
+        pass "dwm-session guards exactly one touchegg client"
+    else
+        warn "dwm-session has no touchegg client startup"
     fi
 
 # --- 5. dwm binary (custom config embedded?) ---------------------------------
@@ -325,6 +455,37 @@ for f in $USER_FILES; do
     if have_file "$f"; then pass "file: $f"; else fail "file missing: $f (re-run setup.sh step 5)"; fi
 done
 if have_exec "$HOME/.config/lf/preview.sh"; then pass "lf preview.sh executable"; else fail "~/.config/lf/preview.sh not executable"; fi
+# dunst monochrome theme (without it popups use default blue/red urgency colors)
+if have_file "$HOME/.config/dunst/dunstrc"; then
+    if grep -v '^[[:space:]]*[#;]' "$HOME/.config/dunst/dunstrc" 2>/dev/null | grep -qiE '#285577|#900000'; then
+        warn "~/.config/dunst/dunstrc has non-grayscale colors (popups break monochrome — re-run setup.sh step 5)"
+    elif grep -q '#000000' "$HOME/.config/dunst/dunstrc" 2>/dev/null; then
+        pass "dunst monochrome theme installed (~/.config/dunst/dunstrc)"
+    else
+        warn "~/.config/dunst/dunstrc doesn't look monochrome (re-run setup.sh step 5)"
+    fi
+else
+    warn "~/.config/dunst/dunstrc missing — popups use default blue/red (re-run setup.sh step 5)"
+fi
+if have_file "$REPO_ROOT/configs/dunst/dunstrc"; then
+    pass "repo configs/dunst/dunstrc present"
+else
+    warn "repo configs/dunst/dunstrc missing"
+fi
+
+# GUI launcher shims (bin-copy.sh symlinks odd-path binaries into ~/.bin)
+if have_bin zed || have_exec "$HOME/.bin/zed"; then
+    pass "zed launchable (terminal `zed` + dwm Super+e)"
+else
+    warn "zed NOT launchable (want ~/.bin/zed -> /usr/bin/zeditor — re-run scripts/bin-copy.sh)"
+fi
+if have_bin pgadmin4 || have_exec "$HOME/.bin/pgadmin4"; then
+    pass "pgadmin4 launchable (terminal `pgadmin4`)"
+elif [ -x /usr/pgadmin4/bin/pgadmin4 ]; then
+    warn "pgadmin4 installed but not on PATH (re-run scripts/bin-copy.sh for the ~/.bin shim)"
+else
+    info "pgadmin4 not installed (optional — scripts/pgadmin-setup.sh)"
+fi
 
 # Repo-shipped binaries (bin-copy.sh installs them from repo bin/)
 CKSUM_FILE="$REPO_ROOT/bin/checksums.sha256"
@@ -425,7 +586,7 @@ if [ -f "$HOME/.ssh/git_blank" ]; then
         fi
     fi
 else
-    fail "~/.ssh/git_blank missing (re-run scripts/ssh-setup.sh; reuse old key via SSH_KEY_SRC=/path/to/backup)"
+    fail "~/.ssh/git_blank missing (re-run scripts/ssh-setup.sh to generate one)"
 fi
 if ssh-add -l >/dev/null 2>&1; then
     if ssh-add -l 2>/dev/null | grep -q "git_blank\|$(ssh-keygen -lf "$HOME/.ssh/git_blank.pub" 2>/dev/null | awk '{print $2}')"; then

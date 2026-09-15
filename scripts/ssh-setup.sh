@@ -16,12 +16,10 @@ err()  { echo -e "${RED}[err]${NC} $*" >&2; }
 SSH_DIR="$HOME/.ssh"
 SSH_KEY_DST="$SSH_DIR/git_blank"
 SSH_PUB_DST="$SSH_DIR/git_blank.pub"
-# Optional: path to an existing PRIVATE key to import (a backup from the old machine).
-# Set this BEFORE generating a new key to avoid rotating the GitHub key:
-#   SSH_KEY_SRC=/run/media/$USER/usb/git_blank bash scripts/ssh-setup.sh
-# If unset and ~/.ssh/git_blank is missing, a NEW key is generated and you
-# MUST add its .pub to https://github.com/settings/keys (the script tells you).
-SSH_KEY_SRC="${SSH_KEY_SRC:-}"
+# Behavior: reuse ~/.ssh/git_blank if it exists, otherwise generate a NEW
+# ed25519 key. The script NEVER fails the overall setup: a failing GitHub
+# auth test is reported as a warning (add the .pub to GitHub afterwards)
+# and setup continues to the next step.
 # Set to 1 to skip the live GitHub auth test (offline install). Default: test.
 SSH_SKIP_GITHUB_TEST="${SSH_SKIP_GITHUB_TEST:-0}"
 
@@ -33,25 +31,16 @@ mkdir -p "$SSH_DIR"
 chmod 700 "$SSH_DIR"
 
 # ---------------------------------------------------------------------------
-# 2. Copy or generate git_blank key (default: generate if missing)
+# 2. Reuse git_blank if present, otherwise generate a NEW key
 # ---------------------------------------------------------------------------
 REPO_PUBKEY="$HOME/cachyOS-setup/configs/ssh/git_blank.pub"
 # Also check repo path relative to script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_PUBKEY_ALT="$SCRIPT_DIR/../configs/ssh/git_blank.pub"
 if [[ -f "$SSH_KEY_DST" ]]; then
-    log "git_blank key already exists in ~/.ssh/"
-elif [[ -n "$SSH_KEY_SRC" && -f "$SSH_KEY_SRC" ]]; then
-    log "Copying git_blank key from $SSH_KEY_SRC..."
-    cp "$SSH_KEY_SRC" "$SSH_KEY_DST"
-    chmod 600 "$SSH_KEY_DST"
-elif [[ -f "$REPO_PUBKEY" && -f "${REPO_PUBKEY%.pub}" ]]; then
-    # Repo has both pub and private? Copy private if exists (not recommended for public repo)
-    log "Copying git_blank from repo configs/ssh/..."
-    cp "${REPO_PUBKEY%.pub}" "$SSH_KEY_DST"
-    chmod 600 "$SSH_KEY_DST"
+    log "git_blank key already exists in ~/.ssh/ — reusing it"
 else
-    log "Generating new ed25519 key at $SSH_KEY_DST (default)..."
+    log "Generating new ed25519 key at $SSH_KEY_DST..."
     if command -v ssh-keygen >/dev/null 2>&1; then
         ssh-keygen -t ed25519 -f "$SSH_KEY_DST" -N "" -C "$(whoami)@$(hostname)-$(date +%Y%m%d)" 2>&1 | tail -n 5
         chmod 600 "$SSH_KEY_DST"
@@ -59,9 +48,7 @@ else
         if [[ -f "${SSH_KEY_DST}.pub" ]]; then
             log "Public key: $(cat "${SSH_KEY_DST}.pub")"
         fi
-        warn "NEW key generated — the OLD GitHub key no longer matches."
-        warn "To REUSE the old key instead: restore its private file and re-run:"
-        warn "  SSH_KEY_SRC=/path/to/backup-git_blank bash scripts/ssh-setup.sh"
+        warn "NEW key generated — add its .pub to https://github.com/settings/keys"
     else
         warn "ssh-keygen not found — cannot generate key"
         warn "Install openssh and re-run"
@@ -204,7 +191,9 @@ if [[ -f "$SSH_KEY_DST" ]]; then
     esac
 
     # -----------------------------------------------------------------------
-    # 5. Test connection — HARD GATE (was a soft warn, so rotations went unnoticed)
+    # 5. Test connection — INFORMATIONAL ONLY, never fails the setup.
+    #    A fresh key won't be on GitHub yet: warn, show what to paste,
+    #    and continue to the next step regardless.
     # -----------------------------------------------------------------------
     if [[ "$SSH_SKIP_GITHUB_TEST" == "1" ]]; then
         warn "Skipping GitHub auth test (SSH_SKIP_GITHUB_TEST=1)"
@@ -214,8 +203,8 @@ if [[ -f "$SSH_KEY_DST" ]]; then
         if echo "$SSH_OUTPUT" | grep -qE "(successfully authenticated|Hi .* You've authenticated)"; then
             log "GitHub SSH connection successful!"
         else
-            err "GitHub SSH auth FAILED — fix before continuing."
-            err "Offered key: $(ssh-keygen -lf "${SSH_KEY_DST}.pub" 2>/dev/null || echo "${SSH_KEY_DST}.pub")"
+            warn "GitHub SSH auth did not succeed (key probably not added yet) — continuing anyway."
+            warn "Offered key: $(ssh-keygen -lf "${SSH_KEY_DST}.pub" 2>/dev/null || echo "${SSH_KEY_DST}.pub")"
             echo ""
             echo "  1. Copy this EXACT public key:"
             echo "     $(cat "${SSH_KEY_DST}.pub" 2>/dev/null || echo '<missing>')"
@@ -226,13 +215,8 @@ if [[ -f "$SSH_KEY_DST" ]]; then
             fi
             echo "  2b. Or add manually: https://github.com/settings/keys -> New SSH key -> paste"
             echo ""
-            echo "  3. Re-test:  ssh -T git@github.com"
-            echo "     Re-run:   bash scripts/ssh-setup.sh"
-            echo ""
-            echo "  (Fresh install rotated the key? Reuse the OLD private key instead: )"
-            echo "     SSH_KEY_SRC=/path/to/backup-git_blank bash scripts/ssh-setup.sh"
-            echo "  (Offline? bypass once: SSH_SKIP_GITHUB_TEST=1 bash scripts/ssh-setup.sh)"
-            GITHUB_SSH_FAILED=1
+            echo "  3. Re-test any time:  ssh -T git@github.com"
+            echo "  (Offline? skip once: SSH_SKIP_GITHUB_TEST=1 bash scripts/ssh-setup.sh)"
         fi
     fi
 else
@@ -275,11 +259,8 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 log ""
-if [[ "${GITHUB_SSH_FAILED:-0}" == "1" ]]; then
-    err "SSH setup INCOMPLETE: GitHub rejected the key (see ACTION steps above)."
-    err "After adding the key, re-run: bash scripts/ssh-setup.sh"
-    exit 1
-fi
+# NOTE: no hard failure here by design — GitHub auth is informational only
+# so setup.sh always proceeds to the next step.
 
 # ---------------------------------------------------------------------------
 # 7. Git global identity (author for every commit on this machine)
@@ -310,3 +291,4 @@ log "  - Remote: $(git config --get remote.origin.url 2>/dev/null || echo 'not i
 log "  - git identity: $(git config --global user.name 2>/dev/null || echo '<unset>') <$(git config --global user.email 2>/dev/null || echo '<unset>')>"
 log "  - Use: git clone git@github.com:username/repo.git"
 log "  - Bundled pubkey (reference): configs/ssh/git_blank.pub"
+log "  - If GitHub auth failed above: paste the .pub at https://github.com/settings/keys"

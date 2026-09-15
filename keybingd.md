@@ -75,8 +75,8 @@ Rules: no auto-tag — browsers/Zed open on current tag (`config.h:26` cleared, 
 
 | Shortcut | Action |
 |---|---|
-| `Super + Shift + x` | **lock screen** (`slock`) |
-| Power button | **lock** (via `acpid`, not shutdown) `configs/acpi/power:1` |
+| `Super + Shift + x` | **lock screen** (`screen-lock` = `slock` black, apps keep running) |
+| Power button | **lock screen** (via `acpid`, not shutdown) `configs/acpi/power:1` |
 | `Super + F12` | toggle bar |
 
 ## Media / Laptop Fn Keys (`config.h:70`)
@@ -92,20 +92,21 @@ Rules: no auto-tag — browsers/Zed open on current tag (`config.h:26` cleared, 
 | `XF86AudioNext/Prev/Stop` | next/prev/stop | `playerctl` |
 | `XF86Display` | `xrandr --auto` | |
 | `XF86Sleep` | suspend | `systemctl suspend` |
-| `XF86ScreenSaver` | lock | `slock` |
+| `XF86ScreenSaver` | lock screen | `screen-lock` (`slock` black) |
 | `XF86Calculator` | `bc -l` in alacritty | |
 | `XF86TouchpadToggle` | toggle touchpad | `xinput toggle` |
 | `Print` | screenshot fullscreen `~/Pictures/shot-*.png` | `maim` |
 | `Shift + Print` | screenshot selection | `maim -s` |
 
-## Gestures (touchegg, `configs/touchegg.conf:1`, daemon from `configs/ly/dwm-session:9`)
+## Gestures (touchegg, `configs/touchegg.conf:1`, client from `configs/ly/dwm-session:9`)
+
+> Only left/right swipes exist (no up/down). Mapping is **inverted**:
+> swipe left → next tag, swipe right → prev tag.
 
 | Gesture (3 fingers) | Action | Emits |
 |---|---|---|
-| swipe **up** | zoom to master | `Super+Ctrl+Return` (alternate zoom, was `Super+Return`) |
-| swipe **down** | close window | `Super+Shift+c` |
-| swipe **left** | **prev tag** (`tag-1`, `shiftview -1`) | `Super+Ctrl+Left` |
-| swipe **right** | **next tag** (`tag+1`, `shiftview +1`) | `Super+Ctrl+Right` |
+| swipe **left** | **next tag** (`tag+1`, `shiftview +1`) | `Super+Ctrl+Right` |
+| swipe **right** | **prev tag** (`tag-1`, `shiftview -1`) | `Super+Ctrl+Left` |
 
 ## Other configs
 

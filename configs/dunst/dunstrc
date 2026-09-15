@@ -1,0 +1,49 @@
+# dunstrc — monochrome (black ↔ white ↔ gray) notification theme
+# Installed to ~/.config/dunst/dunstrc by setup.sh Step 5.
+# dunst reads this file on (re)start; dwm-session starts dunst at every login,
+# and dwm-config.sh / apply-privileged.sh restart it live after installing.
+#
+# Why this file exists: without it dunst uses system defaults, whose
+# urgency_normal background is BLUE (#285577) and critical is RED (#900000) —
+# breaking the monochrome look. Everything below is grayscale only.
+
+[global]
+    font = JetBrainsMono Nerd Font 10
+    frame_width = 2
+    frame_color = "#777777"
+    separator_height = 2
+    padding = 8
+    horizontal_padding = 8
+    text_icon_padding = 0
+    separator_color = "#333333"
+    sort = yes
+    idle_threshold = 120
+    show_age_threshold = 60
+    markup = full
+    format = "<b>%s</b>\n%b"
+    alignment = left
+    vertical_alignment = center
+    show_indicators = yes
+    icon_position = left
+    min_icon_size = 0
+    max_icon_size = 32
+    sticky_history = yes
+    history_length = 20
+
+[urgency_low]
+    background = "#111111"
+    foreground = "#777777"
+    frame_color = "#333333"
+    timeout = 5
+
+[urgency_normal]
+    background = "#000000"
+    foreground = "#eeeeee"
+    frame_color = "#777777"
+    timeout = 8
+
+[urgency_critical]
+    background = "#eeeeee"
+    foreground = "#000000"
+    frame_color = "#ffffff"
+    timeout = 0
