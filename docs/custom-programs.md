@@ -100,8 +100,8 @@ Verify: `xmodmap -pk | grep -E "9|66|37|64"` → `9 Caps_Lock`, `66 Escape`, `37
 |---|---|---|
 | swipe left (3-finger) | next occupied tag (skips empty, locks one past last) | `super+ctrl+Right` (`shiftview +1`) |
 | swipe right (3-finger) | prev occupied tag (skips empty, no wrap to 10) | `super+ctrl+Left` (`shiftview -1`) |
-| swipe left (4-finger) | next window on tag (= `Super+j`) | `super+j` (`focusstack +1`) |
-| swipe right (4-finger) | prev window on tag (= `Super+k`) | `super+k` (`focusstack -1`) |
+| swipe up (3-finger) | prev window on tag (= `Super+k`) | `super+k` (`focusstack -1`) |
+| swipe down (3-finger) | next window on tag (= `Super+j`) | `super+j` (`focusstack +1`) |
 
 Config fires on swipe start (`action_execute_threshold=0`) so short swipes always trigger.
 

@@ -316,15 +316,14 @@ All keys are bound in `config.h` and work everywhere (terminal included):
   `/etc/touchegg/`). System daemon `touchegg.service` (Group `input`, owns
   `/dev/input/event*`) + exactly one user client `touchegg` per session
   (started by `dwm-session` with a client-specific guard).
-- **Map (inverted, left/right only — no up/down):** 3-finger swipe **left** →
-  next occupied tag (`super+ctrl+Right`, `shiftview +1`); 3-finger swipe
-  **right** → prev occupied tag (`super+ctrl+Left`, `shiftview -1`).
-  4-finger swipe **left/right** cycles windows on the current tag
-  (`super+j`/`super+k` = `focusstack ±1`, same as `Super+J/K`). `shiftview` is
-  smart: no wrap-around (tag 1 prev stays, tag 10 next stays), skips empty tags
-  both ways, and from the last occupied tag allows exactly one step onto the
-  next empty tag before locking. Keyboard equivalents `Super+Ctrl+Left/Right`
-  are NOT inverted and share the same behavior. Fires on swipe start
+- **Map (all 3-finger):** swipe **left/right** switches occupied tags
+  (`super+ctrl+Right`/`Left`, smart `shiftview`); swipe **up/down** cycles
+  windows on the current tag (`super+k` = prev / `super+j` = next, same as
+  `Super+K/J` = `focusstack ∓1`). `shiftview` is smart: no wrap-around (tag 1
+  prev stays, tag 10 next stays), skips empty tags both ways, and from the
+  last occupied tag allows exactly one step onto the next empty tag before
+  locking. Tag swipes are inverted (left = next); window swipes follow
+  vim-style (down = next). Fires on swipe start
   (`action_execute_threshold=0`), so short swipes always trigger.
 - **Consistency rules:** `pgrep -a touchegg` must show at most one
   `--daemon` + one bare client. Two daemons split events (random misses);

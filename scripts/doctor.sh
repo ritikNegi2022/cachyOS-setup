@@ -289,10 +289,10 @@ fi
 # Touchegg: only LEFT/RIGHT swipes (no UP/DOWN), INVERTED mapping
 # (swipe left -> next tag, swipe right -> prev tag), immediate-fire settings.
 _tcfg="$REPO_ROOT/configs/touchegg.conf"
-if grep -q 'direction="UP"' "$_tcfg" 2>/dev/null || grep -q 'direction="DOWN"' "$_tcfg" 2>/dev/null; then
-    warn "touchegg still has UP/DOWN gestures (should be left/right only)"
+if grep 'direction="UP"\|direction="DOWN"' "$_tcfg" 2>/dev/null | grep -vq 'fingers="3"'; then
+    warn "touchegg has UP/DOWN gestures outside 3-finger (only 3-finger UP/DOWN = window cycle)"
 else
-    pass "touchegg has no UP/DOWN gestures (left/right only)"
+    pass "touchegg UP/DOWN only on 3-finger (window cycle)"
 fi
 _left_cmd="$(grep -A4 'direction="LEFT"' "$_tcfg" 2>/dev/null | grep -o 'super+ctrl+[A-Za-z]*' | head -1)"
 _right_cmd="$(grep -A4 'direction="RIGHT"' "$_tcfg" 2>/dev/null | grep -o 'super+ctrl+[A-Za-z]*' | head -1)"
@@ -302,12 +302,12 @@ else
     warn "touchegg left/right mapping wrong (left='$_left_cmd' right='$_right_cmd'; want left=super+ctrl+Right right=super+ctrl+Left)"
 fi
 unset _left_cmd _right_cmd
-# 4-finger swipes must cycle windows (Super+J/K), 3-finger stays on tags.
-if grep -A4 'fingers="4" direction="LEFT"' "$_tcfg" 2>/dev/null | grep -q 'super+j' \
-&& grep -A4 'fingers="4" direction="RIGHT"' "$_tcfg" 2>/dev/null | grep -q 'super+k'; then
-    pass "touchegg 4-finger: swipe left/right cycles windows (Super+J/K)"
+# 3-finger UP/DOWN must cycle windows (UP->Super+K prev, DOWN->Super+J next).
+if grep -A4 'fingers="3" direction="UP"' "$_tcfg" 2>/dev/null | grep -q 'super+k' \
+&& grep -A4 'fingers="3" direction="DOWN"' "$_tcfg" 2>/dev/null | grep -q 'super+j'; then
+    pass "touchegg 3-finger UP/DOWN cycles windows (up=K prev, down=J next)"
 else
-    warn "touchegg 4-finger window-cycle missing (want LEFT->super+j RIGHT->super+k)"
+    warn "touchegg 3-finger UP/DOWN window-cycle missing (want UP->super+k DOWN->super+j)"
 fi
 if grep -q 'action_execute_threshold">0<' "$_tcfg" 2>/dev/null; then
     pass "touchegg immediate-fire settings present (consistent triggering)"
