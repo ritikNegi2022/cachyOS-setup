@@ -98,6 +98,21 @@ fi
 # Zed editor configs
 cp "$THIS_DIR/configs/zed/settings.json" "$HOME/.config/zed/settings.json"
 cp "$THIS_DIR/configs/zed/keymap.json" "$HOME/.config/zed/keymap.json"
+# Zed theme extensions (vendored under configs/zed/extensions/ so a fresh
+# install works offline). Without these, Zed falls back to its default theme
+# on first launch when settings.json names a theme from an extension.
+ZED_EXT_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/zed/extensions/installed"
+if [[ -d "$THIS_DIR/configs/zed/extensions" ]]; then
+    for _ext in "$THIS_DIR/configs/zed/extensions/"*/; do
+        [[ -d "$_ext" ]] || continue
+        _name="$(basename "$_ext")"
+        mkdir -p "$ZED_EXT_DIR/$_name"
+        cp -r "$_ext". "$ZED_EXT_DIR/$_name/"
+        log "Installed Zed extension: $_name"
+    done
+    unset _ext _name
+fi
+unset ZED_EXT_DIR
 
 # Keybindings doc — readable on new system + in repo
 mkdir -p "$HOME/Documents" "$HOME/.local/share/cachyOS-setup"
@@ -192,7 +207,7 @@ echo "    Super+Shift+s -> btop"
 echo "    Super+f       -> fullscreen current window | Super+Shift+f -> floating | Super+y -> group (Hyprland-like monocle)"
 echo "    Super+c/x/v   -> copy/cut/paste everywhere (terminal-safe, no SIGINT)"
 echo "    Super+Ctrl+Left/Right -> prev/next tag (3-finger swipe is inverted: left=next, right=prev)"
-echo "    Super+1..9    -> tags 1-9 | Super+minus -> tag 10"
+echo "    Super+1..9    -> tags 1-9 | Super+0 -> tag 10 (minus is alias)"
 echo "    Super+Shift+c -> close window | Super+Shift+q -> quit dwm"
 echo "    Super+Shift+x -> lock screen (slock, black, apps keep running)"
 echo ""

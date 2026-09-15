@@ -117,8 +117,8 @@ sudo without a full reinstall), `scripts/doctor.sh` (read-only health check,
   `strings $(command -v dwm) | grep -q alacritty && echo custom || echo STOCK`.
 - **Rebuild after editing `config.h`:** `bash scripts/dwm-build.sh`, then log
   out/in (or `pkill dwm`). Until rebuilt, keybind changes don't take effect.
-- **Tags = workspaces 1–10** (`Super+1..9`, `Super+minus` = tag 10).
-  `Super+0` views all tags; `Super+Shift+0` sends a window to all tags;
+- **Tags = workspaces 1–10** (`Super+1..9`, `Super+0` = tag 10, `Super+\`` = view all).
+  `Super+grave` views all tags; `Super+Shift+grave` sends a window to all tags;
   `Super+Ctrl+1..9` toggles tag view; `Super+Shift+1..9` moves windows.
   No auto-tagging: browsers/Zed open on the current tag.
 - **Layouts** (symbols in the bar, clickable): ` ` tile,
@@ -316,10 +316,13 @@ All keys are bound in `config.h` and work everywhere (terminal included):
   `/etc/touchegg/`). System daemon `touchegg.service` (Group `input`, owns
   `/dev/input/event*`) + exactly one user client `touchegg` per session
   (started by `dwm-session` with a client-specific guard).
-- **Map (inverted, left/right only — no up/down):** swipe **left** → next tag
-  (`super+ctrl+Right`, `shiftview +1`); swipe **right** → prev tag
-  (`super+ctrl+Left`, `shiftview -1`). Keyboard equivalents
-  `Super+Ctrl+Left/Right` are NOT inverted. Fires on swipe start
+- **Map (inverted, left/right only — no up/down):** swipe **left** → next
+  occupied tag (`super+ctrl+Right`, `shiftview +1`); swipe **right** → prev
+  occupied tag (`super+ctrl+Left`, `shiftview -1`). `shiftview` is smart: no
+  wrap-around (tag 1 prev stays, tag 10 next stays), skips empty tags both
+  ways, and from the last occupied tag allows exactly one step onto the next
+  empty tag before locking. Keyboard equivalents `Super+Ctrl+Left/Right` are
+  NOT inverted and share the same behavior. Fires on swipe start
   (`action_execute_threshold=0`), so short swipes always trigger.
 - **Consistency rules:** `pgrep -a touchegg` must show at most one
   `--daemon` + one bare client. Two daemons split events (random misses);

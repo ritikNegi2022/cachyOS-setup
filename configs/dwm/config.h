@@ -58,24 +58,77 @@ static const Layout layouts[] = {
 #endif
 
 /* custom helpers — must be before keys[] so dwm.c sees them */
+/* Smart tag navigation (keyboard Super+Ctrl+Left/Right AND 3-finger gestures):
+   - NO wrap-around: on tag 1, prev stays; on tag 10, next stays.
+   - Skips empty tags in both directions (jumps to nearest tag with windows).
+   - From the last occupied tag, next is allowed exactly once (onto the next
+     empty tag) and then locks: further next while standing on an empty tag
+     with nothing occupied ahead does nothing. Same mirrored for prev.
+   Gestures are INVERTED (swipe left = next, swipe right = prev). */
 void shiftview(const Arg *arg);
 void shiftview(const Arg *arg) {
     Arg a;
-    if (!selmon) return;
-    unsigned int cur = selmon->tagset[selmon->seltags];
+    unsigned int cur, occ = 0, ref, j;
     unsigned int n = LENGTH(tags);
-    unsigned int shifted;
+    Client *c;
+    if (!selmon) return;
     if (n == 0) return;
-    if (arg->i > 0) {
-        shifted = ((cur << arg->i) | (cur >> (n - arg->i))) & ((1u << n) - 1);
-    } else {
-        shifted = ((cur >> -arg->i) | (cur << (n + arg->i))) & ((1u << n) - 1);
+    cur = selmon->tagset[selmon->seltags];
+    /* "all" view (~0) or empty mask: fall back to first/last tag */
+    if (cur == 0 || cur == ((1u << n) - 1)) {
+        a.ui = (arg->i > 0) ? 1u << 0 : 1u << (n - 1);
+        view(&a);
+        return;
     }
-    // if view was "all" (~0) or empty, fallback to first/last
-    if (shifted == 0 || shifted == ((1u << n) - 1))
-        shifted = (arg->i > 0) ? 1u << 0 : 1u << (n - 1);
-    a.ui = shifted;
-    view(&a);
+    /* reference tag: highest viewed tag when moving next,
+       lowest viewed tag when moving prev */
+    if (arg->i > 0) {
+        ref = 0;
+        for (j = 0; j < n; j++)
+            if (cur & (1u << j))
+                ref = j;
+    } else {
+        ref = n - 1;
+        for (j = 0; j < n; j++)
+            if (cur & (1u << j)) {
+                ref = j;
+                break;
+            }
+    }
+    /* occupancy of each tag on this monitor (any client counts) */
+    for (c = selmon->clients; c; c = c->next)
+        occ |= (c->tags & ((1u << n) - 1));
+    if (arg->i > 0) {
+        /* nearest occupied tag ahead (skips empties) */
+        for (j = ref + 1; j < n; j++)
+            if (occ & (1u << j)) {
+                a.ui = 1u << j;
+                view(&a);
+                return;
+            }
+        /* nothing occupied ahead: one step past the last occupied tag,
+           then lock (stay) while on an empty tag */
+        if ((occ & (1u << ref)) && ref + 1 < n) {
+            a.ui = 1u << (ref + 1);
+            view(&a);
+        }
+        return;
+    } else {
+        /* nearest occupied tag behind (skips empties) */
+        for (j = ref; j-- > 0;)
+            if (occ & (1u << j)) {
+                a.ui = 1u << j;
+                view(&a);
+                return;
+            }
+        /* nothing occupied behind: one step before the first occupied tag,
+           then lock (stay) while on an empty tag */
+        if ((occ & (1u << ref)) && ref > 0) {
+            a.ui = 1u << (ref - 1);
+            view(&a);
+        }
+        return;
+    }
 }
 
 void togglefullscreen(const Arg *arg);
@@ -165,8 +218,9 @@ static const Key keys[] = {
     { MODKEY,              XK_x,                    spawn, SHCMD("super-clipboard x 2>/dev/null || $HOME/.local/bin/super-clipboard x") },
     { MODKEY,              XK_v,                    spawn, SHCMD("super-clipboard v 2>/dev/null || $HOME/.local/bin/super-clipboard v") },
 
-    /* --- tag switching: keyboard Super+Ctrl+Left/Right = tag-1/tag+1;
-           3-finger gestures are INVERTED (swipe left = next tag, swipe right = prev tag) --- */
+    /* --- tag switching: Super+Ctrl+Left/Right = smart shiftview (no wrap,
+           skips empty tags, locks past last occupied); 3-finger gestures are
+           INVERTED (swipe left = next tag, swipe right = prev tag) --- */
     { MODKEY|ControlMask,  XK_Left,                 shiftview,      {.i = -1 } },
     { MODKEY|ControlMask,  XK_Right,                shiftview,      {.i = +1 } },
 
@@ -179,8 +233,11 @@ static const Key keys[] = {
     { MODKEY,              XK_Tab,      view,           {0} },
     { MODKEY|ShiftMask,    XK_c,        killclient,     {0} },
     { MODKEY|ShiftMask,    XK_space,    togglefloating, {0} },
-    { MODKEY,              XK_0,        view,           {.ui = ~0 } },
-    { MODKEY|ShiftMask,    XK_0,        tag,            {.ui = ~0 } },
+    /* Super+0 = tag 10 (was stock-dwm "view all" — confusing with 10 tags) */
+    TAGKEYS(               XK_0,        9)
+    /* "view/tag all tags" moved to Super+`/Super+Shift+` (was Super+0) */
+    { MODKEY,              XK_grave,    view,           {.ui = ~0 } },
+    { MODKEY|ShiftMask,    XK_grave,    tag,            {.ui = ~0 } },
 
     { MODKEY,              XK_t,        setlayout,      {.v = &layouts[0]} },
     { MODKEY,              XK_f,        togglefullscreen, {0} },                           /* fullscreen current window */
@@ -204,7 +261,7 @@ static const Key keys[] = {
     TAGKEYS(               XK_8,        7)
     TAGKEYS(               XK_9,        8)
 
-    /* tag 10 (XK_0 is "view all") */
+    /* tag 10 alias on minus (Super+0 above is the primary binding) */
     { MODKEY,              XK_minus,    view,           {.ui = 1 << 9} },
     { MODKEY|ShiftMask,    XK_minus,    tag,            {.ui = 1 << 9} },
 

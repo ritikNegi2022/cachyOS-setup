@@ -293,10 +293,15 @@ else
     warn "touchegg left/right mapping wrong (left='$_left_cmd' right='$_right_cmd'; want left=super+ctrl+Right right=super+ctrl+Left)"
 fi
 unset _left_cmd _right_cmd
-if grep -q 'action_execute_threshold" value="0"' "$_tcfg" 2>/dev/null; then
+if grep -q 'action_execute_threshold">0<' "$_tcfg" 2>/dev/null; then
     pass "touchegg immediate-fire settings present (consistent triggering)"
 else
     warn "touchegg missing immediate-fire settings (gestures may feel intermittent)"
+fi
+# Broken XML form (value="..." attribute) parses as empty and crashes
+# touchegg v2.0.18 ("Bad action_execute_threshold value: stoi" + stoull abort).
+if grep -q 'property name="[^"]*" value=' "$_tcfg" 2>/dev/null; then
+    warn "touchegg.conf uses value=\"...\" attribute (must be <property>VALUE</property> — crashes touchegg)"
 fi
 unset _tcfg
 # Exactly one daemon + one client (duplicates = flaky/double-fire gestures).
@@ -352,6 +357,23 @@ if grep -q "#3b82f6\|#1e1e2e" "$REPO_ROOT/configs/zed/settings.json" 2>/dev/null
 else
     if grep -q "#777777\|#1a1a1a" "$REPO_ROOT/configs/zed/settings.json" 2>/dev/null; then pass "zed monochrome (grayscale overrides)"; else warn "zed monochrome check ambiguous"; fi
 fi
+# Theme extension must be vendored + installed, else Zed falls back to default
+_zed_theme="$(grep -o '"theme"[[:space:]]*:[[:space:]]*"[^"]*"' "$REPO_ROOT/configs/zed/settings.json" 2>/dev/null | head -1 | cut -d'"' -f4)"
+if [[ -n "$_zed_theme" ]]; then
+    if [[ -d "$REPO_ROOT/configs/zed/extensions/one-black-theme" ]]; then
+        pass "zed theme extension vendored ($_zed_theme)"
+    else
+        warn "zed theme '$_zed_theme' needs an extension but configs/zed/extensions/ is empty (first launch falls back)"
+    fi
+    _zed_ext_dir="${XDG_DATA_HOME:-$HOME/.local/share}/zed/extensions/installed/one-black-theme"
+    if [[ -d "$_zed_ext_dir" ]]; then
+        pass "zed theme extension installed ($_zed_theme)"
+    else
+        warn "zed theme extension not installed (re-run setup.sh Step 5 — Zed falls back to default theme)"
+    fi
+    unset _zed_ext_dir
+fi
+unset _zed_theme
 if grep -q "habamax" "$REPO_ROOT/configs/nvim/init.lua" 2>/dev/null && grep -q "#000000" "$REPO_ROOT/configs/nvim/init.lua" 2>/dev/null; then
     pass "nvim monochrome (habamax + #000000 overrides)"
 else

@@ -1,5 +1,6 @@
 {
-  "theme": "One Dark",
+  "cli_default_open_behavior": "existing_window",
+  "theme": "One Black",
   "theme_overrides": {
     "One Dark": {
       "editor.document_highlight.read_background": "#00000000",
@@ -24,7 +25,7 @@
   "base_keymap": "VSCode",
 
   "buffer_font_family": "JetBrainsMono Nerd Font",
-  "buffer_font_size": 14,
+  "buffer_font_size": 12.0,
   "buffer_font_weight": 400,
   "buffer_font_features": {
     "liga": true,
@@ -41,7 +42,7 @@
     "ss05": true
   },
   "ui_font_family": "JetBrainsMono Nerd Font",
-  "ui_font_size": 13,
+  "ui_font_size": 12.0,
 
   "buffer_line_height": { "custom": 2.25 },
   "current_line_highlight": "gutter",
@@ -137,7 +138,7 @@
     "cursor_shape": "bar",
     "button": false,
     "font_family": "JetBrainsMono Nerd Font",
-    "font_size": 13,
+    "font_size": 12.0,
     "line_height": { "custom": 1.4 },
     "detect_venv": {
       "on": {

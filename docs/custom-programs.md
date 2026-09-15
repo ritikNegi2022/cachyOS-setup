@@ -98,8 +98,8 @@ Verify: `xmodmap -pk | grep -E "9|66|37|64"` → `9 Caps_Lock`, `66 Escape`, `37
 **Gestures (inverted — no up/down):**
 | 3-finger | Action | `xdotool` |
 |---|---|---|
-| swipe left | next tag | `super+ctrl+Right` (`shiftview +1`) |
-| swipe right | prev tag | `super+ctrl+Left` (`shiftview -1`) |
+| swipe left | next occupied tag (skips empty, locks one past last) | `super+ctrl+Right` (`shiftview +1`) |
+| swipe right | prev occupied tag (skips empty, no wrap to 10) | `super+ctrl+Left` (`shiftview -1`) |
 
 Config fires on swipe start (`action_execute_threshold=0`) so short swipes always trigger.
 

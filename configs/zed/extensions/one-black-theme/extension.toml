@@ -1,0 +1,23 @@
+id = "one-black-theme"
+name = "One Black Theme"
+version = "0.0.4"
+schema_version = 1
+description = "One Dark got even dar..kier"
+repository = "https://github.com/serhiiboreiko/one-black-theme-zed"
+authors = ["Serhii Boreiko <jestersunborn@gmail.com>"]
+themes = ["themes/one-black.json"]
+icon_themes = []
+languages = []
+capabilities = []
+
+[lib]
+
+[grammars]
+
+[language_servers]
+
+[context_servers]
+
+[slash_commands]
+
+[indexed_docs_providers]
