@@ -69,6 +69,23 @@ log "Building slock $SLOCK_VERSION with black lock screen in $BUILD_DIR"
     log "Patched config.h: lock screen #005577 -> #000000 (FAILED stays #CC3333 red)"
     grep -n 'colorname\|\[INIT\]\|\[INPUT\]\|\[FAILED\]' config.h | head -n 8
 
+    # Patch: privilege-drop group. Upstream slock uses "nogroup" (Debian-ism);
+    # Arch/CachyOS has no nogroup group — slock then dies on every lock attempt
+    # with "getgrnam nogroup: group entry not found" (power button AND
+    # Super+Shift+X silently fail). Use "nobody", which always exists here.
+    if grep -q '"nogroup"' config.h; then
+        sed -i 's/"nogroup"/"nobody"/g' config.h
+        log 'Patched config.h: drop-group "nogroup" -> "nobody"'
+    else
+        warn 'config.h has no "nogroup" string — upstream may have changed groups;'
+        warn 'verify the installed slock locks (run: screen-lock, unlock with password)'
+        grep -n 'group' config.h | head -n 5 || true
+    fi
+    if ! getent group nobody >/dev/null 2>&1; then
+        err 'Local group "nobody" missing — cannot build a working slock'
+        exit 1
+    fi
+
     # Build (needs a compiler + X headers; setup.sh Step 1 covers this)
     make clean >/dev/null 2>&1 || true
     make || { err "make failed (need: base-devel + libx11 + libxext headers)"; exit 1; }
@@ -85,6 +102,14 @@ if [[ -x /usr/local/bin/slock ]]; then
     else
         err "WARNING: installed slock lacks #000000 — patch did not take effect"
         exit 1
+    fi
+    # The "nobody" user string is also embedded, so match "nogroup" specifically.
+    if strings /usr/local/bin/slock 2>/dev/null | grep -qx 'nogroup' && ! getent group nogroup >/dev/null 2>&1; then
+        err "WARNING: installed slock drops to missing group 'nogroup' — every lock attempt will fail"
+        err "Rebuild with the nogroup->nobody patch (this script) and reinstall"
+        exit 1
+    else
+        log "Verified: slock drop-group exists locally"
     fi
     if [[ "$(command -v slock)" == "/usr/local/bin/slock" ]]; then
         log "Active slock resolves to the custom build: $(command -v slock)"

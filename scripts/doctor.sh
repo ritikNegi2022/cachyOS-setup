@@ -114,6 +114,15 @@ if [[ -x /usr/local/bin/slock ]] && strings /usr/local/bin/slock 2>/dev/null | g
 else
     warn "custom slock build missing — lock screen is stock blue (fix: bash scripts/slock-build.sh)"
 fi
+# slock drops privileges to a compile-time group ("nobody" user string is also
+# embedded, so match "nogroup" specifically); if that group is missing locally,
+# EVERY lock attempt dies ("getgrnam ... not found") — power button and
+# Super+Shift+X silently do nothing.
+if strings /usr/local/bin/slock 2>/dev/null | grep -qx 'nogroup' && ! getent group nogroup >/dev/null 2>&1; then
+    warn "slock drops to missing group 'nogroup' — power button won't lock (fix: bash scripts/slock-build.sh)"
+else
+    pass "slock drop-group OK (lock works)"
+fi
 if have_file /etc/X11/xorg.conf.d/30-natural-scroll.conf && grep -q 'NaturalScrolling.*true' /etc/X11/xorg.conf.d/30-natural-scroll.conf 2>/dev/null; then
     pass "natural (inverted) scrolling Xorg config installed"
 else
