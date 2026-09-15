@@ -1,0 +1,56 @@
+#!/bin/sh
+# aphone — dead-simple Android file transfer over USB (via adb, no MTP).
+# Works with ANY Android phone/tablet: pull, push, list, shell.
+#
+# One-time phone setup:
+#   1. Settings → About phone → tap "Build number" 7x (enables Developer options)
+#   2. Settings → System → Developer options → turn ON "USB debugging"
+#   3. Plug in USB → accept the "Allow USB debugging?" prompt (check "Always")
+# Install adb once:  sudo pacman -S --needed android-tools
+#
+# Usage:
+#   aphone ls [phone-dir]         list a phone dir (default: /sdcard)
+#   aphone pull <phone-path> [.]  copy phone -> laptop (default dest: current dir)
+#   aphone push <local> [phone-dir]  copy laptop -> phone (default dest: /sdcard)
+#   aphone shell [command...]     run a shell (or one command) on the phone
+# Examples:
+#   aphone ls /sdcard/DCIM
+#   aphone pull /sdcard/DCIM/Camera ~/Pictures/phone
+#   aphone push song.mp3 /sdcard/Music
+
+cmd="${1:-help}"
+shift 2>/dev/null || true
+
+die() { echo "aphone: $*" >&2; exit 1; }
+
+case "$cmd" in
+    help|-h|--help)
+        awk 'NR<2{next} /^[^#]/{exit} {sub(/^# ?/,""); print}' "$0"
+        exit 0
+        ;;
+esac
+
+command -v adb >/dev/null 2>&1 || die "adb not found — install it: sudo pacman -S --needed android-tools"
+
+# Exactly one connected, authorized device — anything else gets clear guidance.
+state="$(adb devices 2>/dev/null | awk 'NR>1 && $1 != "" {print $1, $2}')"
+[ -n "$state" ] || die "no phone found — plug in USB, enable USB debugging, then: adb devices"
+echo "$state" | grep -q "unauthorized" && die "phone shows UNAUTHORIZED — unlock it and accept the 'Allow USB debugging?' prompt"
+echo "$state" | grep -q "device$" || die "phone not ready (state: $state) — unlock it and accept the prompt"
+[ "$(printf '%s\n' "$state" | wc -l)" -gt 1 ] && die "more than one device — unplug the extra one (multi-device is out of scope)"
+
+case "$cmd" in
+    ls)
+        adb shell ls -la -- "${1:-/sdcard}" ;;
+    pull)
+        [ -n "${1:-}" ] || die "usage: aphone pull <phone-path> [local-dest]"
+        adb pull -- "$1" "${2:-.}" ;;
+    push)
+        [ -n "${1:-}" ] || die "usage: aphone push <local-path> [phone-dir]"
+        adb push -- "$1" "${2:-/sdcard}" ;;
+    shell)
+        # shellcheck disable=SC2086
+        adb shell ${*:-} ;;
+    *)
+        die "unknown command '$cmd' — see: aphone help" ;;
+esac

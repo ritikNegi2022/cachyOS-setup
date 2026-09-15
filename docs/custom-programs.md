@@ -163,6 +163,7 @@ screen-lock --test  # dry run: shows what would be locked, locks nothing
 | `wmctrl` | `wmctrl` (fullscreen toggle fallback) |
 | `libinput` | touchpad driver + `NaturalScrolling` |
 | `touchegg` | 3-finger gesture daemon (`touchegg --daemon` + client) |
+| `android-tools` | `adb` backend for `aphone` (`~/.bin/aphone`: `ls/pull/push` any Android over USB, no MTP) |
 | `xclip` | CLI clipboard (`xclip`, also `xclip` in nvim `unnamedplus`) |
 | `xterm` | fallback terminal (not primary; `alacritty` is) |
 | `file` | `file` (lf preview) |
