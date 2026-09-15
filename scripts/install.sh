@@ -108,6 +108,12 @@ if ! yay -S --noconfirm --needed pgadmin4-desktop; then
     warn "pgadmin4-desktop AUR build failed — will be retried by scripts/pgadmin-setup.sh"
 fi
 
+# simple-mtpfs (FUSE mount for Android MTP) — TUI browsing via lf, no GUI,
+# no USB debugging needed. Non-fatal like pgadmin (small build, rarely fails).
+if ! yay -S --noconfirm --needed simple-mtpfs; then
+    warn "simple-mtpfs AUR build failed — Android USB mounting unavailable (MTP fallback: android-file-transfer GUI)"
+fi
+
 log "AUR packages installed."
 
 # ---------------------------------------------------------------------------
