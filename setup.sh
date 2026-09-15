@@ -7,7 +7,7 @@
 #   scripts/extra-packages.sh — additional software (audio, bluetooth, fonts, ...)
 #   scripts/dwm-build.sh      — build dwm from AUR with our config.h
 #   scripts/dwm-config.sh     — ly display manager + dwm session + gestures
-#   scripts/ssh-setup.sh      — SSH config (git_blank key only)
+#   scripts/ssh-setup.sh      — SSH config (git_blank key) + git global identity
 #   scripts/bin-copy.sh       — install ~/.bin tools (dsa + keypress-sound ship
 #                               in repo bin/; other personal tools from ~/.bin if present)
 #   scripts/postgres-setup.sh — full PostgreSQL setup

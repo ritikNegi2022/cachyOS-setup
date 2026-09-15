@@ -68,7 +68,7 @@ log "Installing official repo packages..."
     xdotool wmctrl libinput touchegg \
     xclip xterm file \
     alacritty tmux neovim lf lazygit \
-    btop fastfetch man-db git \
+    btop fastfetch man-db git github-cli \
     ripgrep fd fzf tree bat eza \
     ly zed \
     dunst \

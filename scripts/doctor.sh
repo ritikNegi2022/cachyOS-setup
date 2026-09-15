@@ -395,6 +395,87 @@ if [ -f "$HOME/.ssh/config" ] && grep -qF 'cachyOS-setup SSH config' "$HOME/.ssh
 else
     warn "~/.ssh/config not set up (re-run scripts/ssh-setup.sh)"
 fi
+# GitHub key health: private/public pair, perms, repo-ref sync, agent, live auth
+if [ -f "$HOME/.ssh/git_blank" ]; then
+    if [ "$(stat -c %a "$HOME/.ssh/git_blank" 2>/dev/null)" = "600" ]; then
+        pass "~/.ssh/git_blank present (600)"
+    else
+        fail "~/.ssh/git_blank permissions wrong (fix: chmod 600 ~/.ssh/git_blank)"
+    fi
+    if [ -f "$HOME/.ssh/git_blank.pub" ]; then
+        if derived=$(ssh-keygen -y -f "$HOME/.ssh/git_blank" 2>/dev/null) && [ -n "$derived" ]; then
+            # Compare first two fields only (type + keydata); comments differ
+            # (ssh-keygen -y echoes the private key's embedded comment).
+            if [ "$(printf '%s' "$derived" | cut -d' ' -f1,2)" = "$(cut -d' ' -f1,2 "$HOME/.ssh/git_blank.pub" 2>/dev/null)" ]; then
+                pass "git_blank .pub matches private key"
+            else
+                fail "git_blank.pub does NOT match private key (fix: ssh-keygen -y -f ~/.ssh/git_blank > ~/.ssh/git_blank.pub)"
+            fi
+        else
+            warn "could not derive public key from ~/.ssh/git_blank"
+        fi
+    else
+        fail "~/.ssh/git_blank.pub missing (fix: ssh-keygen -y -f ~/.ssh/git_blank > ~/.ssh/git_blank.pub)"
+    fi
+    if [ -f "$REPO_ROOT/configs/ssh/git_blank.pub" ] && [ -f "$HOME/.ssh/git_blank.pub" ]; then
+        if cmp -s "$HOME/.ssh/git_blank.pub" "$REPO_ROOT/configs/ssh/git_blank.pub"; then
+            pass "repo configs/ssh/git_blank.pub in sync with ~/.ssh"
+        else
+            warn "repo configs/ssh/git_blank.pub differs from ~/.ssh (re-run scripts/ssh-setup.sh to sync, then commit)"
+        fi
+    fi
+else
+    fail "~/.ssh/git_blank missing (re-run scripts/ssh-setup.sh; reuse old key via SSH_KEY_SRC=/path/to/backup)"
+fi
+if ssh-add -l >/dev/null 2>&1; then
+    if ssh-add -l 2>/dev/null | grep -q "git_blank\|$(ssh-keygen -lf "$HOME/.ssh/git_blank.pub" 2>/dev/null | awk '{print $2}')"; then
+        pass "ssh-agent has git_blank loaded"
+    else
+        warn "ssh-agent running but git_blank NOT loaded (fix: ssh-add ~/.ssh/git_blank)"
+    fi
+else
+    warn "ssh-agent not running / no keys (fix: re-login or eval \"\$(ssh-agent -s)\" && ssh-add ~/.ssh/git_blank)"
+fi
+if grep -qF 'cachyOS-setup ssh-agent' "$HOME/.bashrc" 2>/dev/null || grep -qF 'cachyOS-setup ssh-agent' "$HOME/.zshrc" 2>/dev/null; then
+    pass "ssh-agent autostart snippet in shell rc"
+else
+    warn "ssh-agent autostart snippet missing from shell rc (re-run scripts/ssh-setup.sh)"
+fi
+if timeout 12 ssh -o BatchMode=yes -o ConnectTimeout=8 -T git@github.com 2>&1 | grep -qE "(successfully authenticated|Hi .* You've authenticated)"; then
+    pass "GitHub SSH auth works (ssh -T greets you)"
+else
+    out=$(timeout 12 ssh -o BatchMode=yes -o ConnectTimeout=8 -T git@github.com 2>&1 || true)
+    case "$out" in
+        *"Permission denied (publickey)"*)
+            fail "GitHub SSH auth FAILED: key not registered (fix: add '$(cat "$HOME/.ssh/git_blank.pub" 2>/dev/null)' at https://github.com/settings/keys, then re-run scripts/ssh-setup.sh)" ;;
+        *"Could not resolve"*|*"Connection timed out"*|*"Network is unreachable"*)
+            warn "GitHub SSH unreachable (offline? re-run doctor online)" ;;
+        *) warn "GitHub SSH test inconclusive: $(echo "$out" | head -n 2 | tr '\n' ' ')" ;;
+    esac
+fi
+if have_bin gh; then
+    pass "gh (GitHub CLI) on PATH"
+    if gh auth status >/dev/null 2>&1; then
+        pass "gh authenticated (gh ssh-key add usable)"
+    else
+        warn "gh installed but not logged in (fix: gh auth login — enables automatic SSH key upload)"
+    fi
+else
+    warn "gh missing (fix: sudo pacman -S --needed github-cli, or re-run scripts/install.sh)"
+fi
+# Git global identity (set by scripts/ssh-setup.sh section 7)
+_expected_name="blank"
+_expected_email="negiritik2022@gmail.com"
+_actual_name="$(git config --global user.name 2>/dev/null || true)"
+_actual_email="$(git config --global user.email 2>/dev/null || true)"
+if [[ "$_actual_name" == "$_expected_name" && "$_actual_email" == "$_expected_email" ]]; then
+    pass "git identity: $_actual_name <$_actual_email>"
+elif [[ -n "$_actual_name" && -n "$_actual_email" ]]; then
+    warn "git identity is '$_actual_name <$_actual_email>' (expected '$_expected_name <$_expected_email>' — fix: re-run scripts/ssh-setup.sh)"
+else
+    warn "git identity missing (fix: re-run scripts/ssh-setup.sh)"
+fi
+unset _expected_name _expected_email _actual_name _actual_email
 
 # --- 7. Services -------------------------------------------------------------
 section "7. Services"

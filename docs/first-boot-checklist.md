@@ -94,7 +94,10 @@ Setup: ______________  Date: ______________
 - [ ] `freebuff` runs in a project dir
 - [ ] `opencode` runs (may need `exec $SHELL` after setup for PATH)
 - [ ] `ssh -T git@github.com` greets you with your username
-      *Fix:* key must be at `~/.ssh/git_blank` (600) — re-run `scripts/ssh-setup.sh`
+      *Fresh install?* setup generates a NEW key — add its pub to GitHub or auth fails:
+      `cat ~/.ssh/git_blank.pub` → https://github.com/settings/keys → New SSH key → re-run `bash scripts/ssh-setup.sh`
+      *Keep the old key instead?* before setup: `SSH_KEY_SRC=/path/to/backup-git_blank bash scripts/ssh-setup.sh`
+      *Fix:* key must be at `~/.ssh/git_blank` (600) + loaded in agent (`ssh-add -l`) — re-run `scripts/ssh-setup.sh`
 - [ ] `pg_lsclusters` or `systemctl status postgresql` → running
 - [ ] `psql -U postgres -d api_watch -c '\q'` connects (trust auth, dev box)
 - [ ] `pgadmin4` desktop opens; register server `127.0.0.1:5432` user `postgres`

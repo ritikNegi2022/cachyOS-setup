@@ -37,14 +37,17 @@ pgrep -x dunst >/dev/null 2>&1 || { nohup dunst >/tmp/dunst.log 2>&1 & disown; }
 # Reminder daemon: hourly time pings + user reminders (see `remind` CLI)
 { nohup /etc/ly/reminderd >/tmp/reminderd.log 2>&1 & disown; } || /etc/ly/reminderd &
 
-# Live fallback for Super+Enter -> terminal until dwm is rebuilt with new config.h
-# (config.h:90 now binds both Super+Enter and Super+Shift+Enter to termcmd; old binary only had Shift)
-if ! strings "$(command -v dwm)" 2>/dev/null | grep -q "super-clipboard"; then
-    # Old dwm: also need fallback for Super+Enter if not yet rebuilt
-    :
-fi
-# Temporary pynput daemon: makes Super+Enter spawn alacritty even on old dwm (both Super+Enter and Shift work)
-if ! strings "$(command -v dwm)" 2>/dev/null | grep -q "MODKEY.*XK_Return.*termcmd" 2>/dev/null; then
+# Super+Enter -> terminal: dwm does this natively (config.h: MODKEY+XK_Return -> termcmd).
+# The pynput fallback (super-enter-live.py) is ONLY for old dwm binaries predating the rebuild.
+# Detection must use a string actually embedded in the binary ("alacritty", same check as
+# scripts/dwm-build.sh / scripts/doctor.sh). The old guard grepped for source text
+# "MODKEY.*XK_Return.*termcmd", which never appears in `strings` output, so it was
+# always true and spawned a 2nd terminal on every Super+Enter.
+if strings "$(command -v dwm)" 2>/dev/null | grep -q "alacritty"; then
+    # New dwm: native binding works — kill any stale fallback so Super+Enter opens exactly 1 window.
+    pkill -f super-enter-live.py >/dev/null 2>&1 || true
+else
+    # Old/stock dwm: keep fallback until user rebuilds with scripts/dwm-build.sh.
     pgrep -f super-enter-live.py >/dev/null 2>&1 || nohup python3 "$HOME/.local/bin/super-enter-live.py" >/tmp/super-enter-live.log 2>&1 &
 fi
 
@@ -53,6 +56,17 @@ fi
 # units bound to it to launch. No-op-safe when run repeatedly.
 systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP 2>/dev/null || true
 systemctl --user start graphical-session.target 2>/dev/null || true
+
+# Boot autostart: exactly 1 alacritty on login. Preferred path is the systemd
+# user service (configs/systemd/alacritty-autostart.service, enabled by
+# scripts/bin-copy.sh) which starts via graphical-session.target above.
+# Fallback `alacritty &` runs ONLY when that service is missing/disabled,
+# guarded by pgrep so we never open 2 terminals at boot.
+if systemctl --user is-enabled alacritty-autostart.service >/dev/null 2>&1; then
+    : # systemd handles it — do nothing here
+else
+    pgrep -x alacritty >/dev/null 2>&1 || { nohup alacritty >/tmp/alacritty-autostart.log 2>&1 & disown; }
+fi
 
 # Start dwm (replaces this shell)
 exec dwm
