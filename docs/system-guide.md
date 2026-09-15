@@ -123,7 +123,8 @@ sudo without a full reinstall), `scripts/doctor.sh` (read-only health check,
   No auto-tagging: browsers/Zed open on the current tag.
 - **Layouts** (symbols in the bar, clickable): ` ` tile,
   floating, monocle; `Super+t/f/m`, `Super+Space` cycles,
-  `Super+Shift+Space` toggles floating, `Super+y` groups (Hyprland-like),
+  `Super+Shift+Space` toggles floating, `Super+y` groups (Hyprland-like,
+  per-tag — grouping one tag never leaks onto others, unvisited tags open tiled),
   `Super+Ctrl+Return` zooms a window to master, `Super+F12` shows/hides the
   bar (hidden by default, `showbar = 0` in `config.h`).
 - **App launchers** (`config.h:100`): `Super+Return` / `Super+Shift+Return` →

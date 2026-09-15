@@ -46,7 +46,7 @@ static const Layout layouts[] = {
 #define MODKEY Mod4Mask /* Super key */
 
 #define TAGKEYS(KEY, TAG)                                                   \
-    { MODKEY,                       KEY, view,       {.ui = 1 << TAG} },    \
+    { MODKEY,                       KEY, viewgroup,   {.ui = 1 << TAG} },    \
     { MODKEY|ControlMask,           KEY, toggleview, {.ui = 1 << TAG} },    \
     { MODKEY|ShiftMask,             KEY, tag,        {.ui = 1 << TAG} },    \
     { MODKEY|ControlMask|ShiftMask, KEY, toggletag,  {.ui = 1 << TAG} },
@@ -58,6 +58,45 @@ static const Layout layouts[] = {
 #endif
 
 /* custom helpers — must be before keys[] so dwm.c sees them */
+/* Per-tag layout memory: dwm layouts are global per monitor, so Super+Y
+   group (monocle) used to leak onto every tag. This remembers each tag's
+   layout instead: every tag switch saves the old tag's layout and restores
+   the new tag's (tags never visited start on tile). Multi-tag views
+   (toggleview, view-all) only save — nothing is forced on them.
+   ALL single-tag switches must go through viewgroup(), never view()
+   directly (TAGKEYS, shiftview, view-all, last-tag bindings below do). */
+static const Layout *taglayouts[LENGTH(tags)];
+
+void viewgroup(const Arg *arg);
+void viewgroup(const Arg *arg) {
+    Monitor *m = selmon;
+    unsigned int cur, n = LENGTH(tags);
+    unsigned int i;
+    if (!m || n == 0)
+        return;
+    cur = m->tagset[m->seltags];
+    /* save layout of the tag we are leaving (single-tag views only) */
+    if (cur && !(cur & (cur - 1))) {
+        for (i = 0; i < n; i++)
+            if (cur == (1u << i)) {
+                taglayouts[i] = m->lt[m->sellt];
+                break;
+            }
+    }
+    view(arg);
+    /* restore layout of the tag we landed on (single-tag views only) */
+    cur = m->tagset[m->seltags];
+    if (cur && !(cur & (cur - 1))) {
+        for (i = 0; i < n; i++)
+            if (cur == (1u << i)) {
+                if (!taglayouts[i])
+                    taglayouts[i] = &layouts[0]; /* unvisited tags start tiled */
+                if (taglayouts[i] != m->lt[m->sellt])
+                    setlayout(&((Arg){ .v = taglayouts[i] }));
+                break;
+            }
+    }
+}
 /* Smart tag navigation (keyboard Super+Ctrl+Left/Right AND 3-finger gestures):
    - NO wrap-around: on tag 1, prev stays; on tag 10, next stays.
    - Skips empty tags in both directions (jumps to nearest tag with windows).
@@ -77,7 +116,7 @@ void shiftview(const Arg *arg) {
     /* "all" view (~0) or empty mask: fall back to first/last tag */
     if (cur == 0 || cur == ((1u << n) - 1)) {
         a.ui = (arg->i > 0) ? 1u << 0 : 1u << (n - 1);
-        view(&a);
+        viewgroup(&a);
         return;
     }
     /* reference tag: highest viewed tag when moving next,
@@ -103,14 +142,14 @@ void shiftview(const Arg *arg) {
         for (j = ref + 1; j < n; j++)
             if (occ & (1u << j)) {
                 a.ui = 1u << j;
-                view(&a);
+                viewgroup(&a);
                 return;
             }
         /* nothing occupied ahead: one step past the last occupied tag,
            then lock (stay) while on an empty tag */
         if ((occ & (1u << ref)) && ref + 1 < n) {
             a.ui = 1u << (ref + 1);
-            view(&a);
+            viewgroup(&a);
         }
         return;
     } else {
@@ -118,14 +157,14 @@ void shiftview(const Arg *arg) {
         for (j = ref; j-- > 0;)
             if (occ & (1u << j)) {
                 a.ui = 1u << j;
-                view(&a);
+                viewgroup(&a);
                 return;
             }
         /* nothing occupied behind: one step before the first occupied tag,
            then lock (stay) while on an empty tag */
         if ((occ & (1u << ref)) && ref > 0) {
             a.ui = 1u << (ref - 1);
-            view(&a);
+            viewgroup(&a);
         }
         return;
     }
@@ -137,7 +176,8 @@ void togglefullscreen(const Arg *arg) {
         setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
 }
 
-/* simple Hyprland-like group: toggle monocle + remember previous layout
+/* Hyprland-like group: toggle monocle on THIS tag only. Per-tag memory
+   (viewgroup above) keeps it here — other tags keep their own layout.
    Group = show all windows on current tag tabbed (monocle), ungroup = tile */
 void togglegroup(const Arg *arg) {
     if (selmon->lt[selmon->sellt] == &layouts[2]) { // monocle = grouped
@@ -230,13 +270,13 @@ static const Key keys[] = {
     { MODKEY,              XK_d,        incnmaster,     {.i = -1 } },
     { MODKEY,              XK_h,        setmfact,       {.f = -0.05} },
     { MODKEY,              XK_l,        setmfact,       {.f = +0.05} },
-    { MODKEY,              XK_Tab,      view,           {0} },
+    { MODKEY,              XK_Tab,      viewgroup,      {0} },
     { MODKEY|ShiftMask,    XK_c,        killclient,     {0} },
     { MODKEY|ShiftMask,    XK_space,    togglefloating, {0} },
     /* Super+0 = tag 10 (was stock-dwm "view all" — confusing with 10 tags) */
     TAGKEYS(               XK_0,        9)
     /* "view/tag all tags" moved to Super+`/Super+Shift+` (was Super+0) */
-    { MODKEY,              XK_grave,    view,           {.ui = ~0 } },
+    { MODKEY,              XK_grave,    viewgroup,      {.ui = ~0 } },
     { MODKEY|ShiftMask,    XK_grave,    tag,            {.ui = ~0 } },
 
     { MODKEY,              XK_t,        setlayout,      {.v = &layouts[0]} },
@@ -262,7 +302,7 @@ static const Key keys[] = {
     TAGKEYS(               XK_9,        8)
 
     /* tag 10 alias on minus (Super+0 above is the primary binding) */
-    { MODKEY,              XK_minus,    view,           {.ui = 1 << 9} },
+    { MODKEY,              XK_minus,    viewgroup,      {.ui = 1 << 9} },
     { MODKEY|ShiftMask,    XK_minus,    tag,            {.ui = 1 << 9} },
 
     /* quit dwm (stock handler — no restart signal in stock dwm 6.8) */
@@ -277,7 +317,7 @@ static const Button buttons[] = {
     { ClkClientWin,       MODKEY,  Button1, movemouse,      {0} },
     { ClkClientWin,       MODKEY,  Button2, togglefloating, {0} },
     { ClkClientWin,       MODKEY,  Button3, resizemouse,    {0} },
-    { ClkTagBar,          0,       Button1, view,           {0} },
+    { ClkTagBar,          0,       Button1, viewgroup,      {0} },
     { ClkTagBar,          0,       Button3, toggleview,     {0} },
     { ClkTagBar,          MODKEY,  Button1, tag,            {0} },
     { ClkTagBar,          MODKEY,  Button3, toggletag,      {0} },

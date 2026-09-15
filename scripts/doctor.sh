@@ -339,6 +339,14 @@ if grep -q "shiftview" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
 else
     warn "dwm shiftview missing (tag switching via gesture won't work)"
 fi
+# Per-tag group: every single-tag switch must go through viewgroup(), or the
+# group (monocle) leaks onto all tags again. toggleview/tag/toggletag stay direct.
+if grep -q "viewgroup" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null \
+&& ! grep -E '\{(MODKEY|ClkTagBar)[^}]*, *view,' "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null | grep -qv toggleview; then
+    pass "dwm per-tag group memory (all tag switches via viewgroup)"
+else
+    warn "dwm viewgroup routing broken — group may leak across tags (check config.h)"
+fi
 # Fullscreen
 if grep -q "togglefullscreen" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
     pass "dwm fullscreen binding Super+f (togglefullscreen) present"

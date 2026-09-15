@@ -58,7 +58,7 @@ Symbols in bar: `` = tile, `` = floating, `` = monocle.
 | `Super + f` | **fullscreen** current window | `togglefullscreen` (`config.h:186`) |
 | `Super + Shift + f` | floating layout `` | `setlayout layouts[1]` (`config.h:187`) |
 | `Super + m` | monocle layout `` (grouped) | `setlayout layouts[2]` (`config.h:188`) |
-| `Super + y` | **group** toggle Hyprland-like (tile <-> monocle) | `togglegroup` (`config.h:189`) |
+| `Super + y` | **group** toggle Hyprland-like (tile <-> monocle, per-tag: stays on its tag) | `togglegroup` + `viewgroup` (`config.h`) |
 | `Super + Space` | cycle layout (tile -> float -> monocle) | `setlayout 0` (`config.h:190`) |
 | `Super + F12` | toggle **statusbar** (hidden by default, `showbar=0`) | `togglebar` (`config.h:138`) |
 
