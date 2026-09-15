@@ -23,6 +23,28 @@ log() { echo "$(date '+%F %T') screen-lock: $*" >>"$LOG" 2>/dev/null; logger -t 
 TEST=0
 [ "${1:-}" = "--test" ] && TEST=1
 
+# Single instance: one power-button press often delivers duplicate ACPI
+# events (journal showed 3 handler runs in the same second), and each would
+# spawn its own slock — the top one steals the X grab, so you get a password
+# prompt that flashes away and must type twice. Guard twice:
+#   1. flock: atomic, race-free for same-millisecond duplicates. The lock is
+#      held on fd 9 until slock exits (fd survives exec), so a second
+#      invocation — even via runuser/sudo — fails closed and skips.
+#   2. pgrep: backstop in case a launcher closes non-std fds (dropping the
+#      flock early); a visible slock means a lock is already in progress.
+if command -v flock >/dev/null 2>&1; then
+    exec 9>/tmp/screen-lock.guard 2>/dev/null || true
+    if ! flock -n 9 2>/dev/null; then
+        log "lock already in progress — skipping duplicate request"
+        [ "$TEST" = "1" ] && echo "TEST: lock in progress — would skip"
+        exit 0
+    fi
+fi
+if [ "$TEST" != "1" ] && pgrep -x slock >/dev/null 2>&1; then
+    log "slock already running — skipping duplicate request"
+    exit 0
+fi
+
 if ! command -v slock >/dev/null 2>&1; then
     log "slock MISSING — cannot lock (repo: sudo pacman -S --needed slock; black theme: bash scripts/slock-build.sh)"
     [ "$TEST" = "1" ] && echo "TEST: FAIL — slock not installed"
