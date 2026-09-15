@@ -302,6 +302,13 @@ else
     warn "touchegg left/right mapping wrong (left='$_left_cmd' right='$_right_cmd'; want left=super+ctrl+Right right=super+ctrl+Left)"
 fi
 unset _left_cmd _right_cmd
+# 4-finger swipes must cycle windows (Super+J/K), 3-finger stays on tags.
+if grep -A4 'fingers="4" direction="LEFT"' "$_tcfg" 2>/dev/null | grep -q 'super+j' \
+&& grep -A4 'fingers="4" direction="RIGHT"' "$_tcfg" 2>/dev/null | grep -q 'super+k'; then
+    pass "touchegg 4-finger: swipe left/right cycles windows (Super+J/K)"
+else
+    warn "touchegg 4-finger window-cycle missing (want LEFT->super+j RIGHT->super+k)"
+fi
 if grep -q 'action_execute_threshold">0<' "$_tcfg" 2>/dev/null; then
     pass "touchegg immediate-fire settings present (consistent triggering)"
 else

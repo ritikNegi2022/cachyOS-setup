@@ -180,8 +180,10 @@ Volume/brightness poke `dwm-statusbar` via `USR1` for instant feedback (`configs
 
 | Gesture (3 fingers) | Action | Emits |
 |---|---|---|
-| swipe **left** | **next occupied** tag (skips empty, no wrap, locks one past last) | `Super+Ctrl+Right` |
-| swipe **right** | **prev occupied** tag (skips empty, no wrap to 10 from tag 1) | `Super+Ctrl+Left` |
+| swipe **left** (3-finger) | **next occupied** tag (skips empty, no wrap, locks one past last) | `Super+Ctrl+Right` |
+| swipe **right** (3-finger) | **prev occupied** tag (skips empty, no wrap to 10 from tag 1) | `Super+Ctrl+Left` |
+| swipe **left** (4-finger) | **next window** on current tag (= `Super+j`) | `Super+j` |
+| swipe **right** (4-finger) | **prev window** on current tag (= `Super+k`) | `Super+k` |
 
 ## 11. Other configs
 
