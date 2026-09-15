@@ -1,2 +1,5 @@
-event=button/power.*
+# Press-only: the release/device notify arrives ~4s later as
+# "button/power PNP0C0C:00 ..." and must NOT re-lock (double password
+# prompt). Verified press format: "button/power PBTN 00000080 00000000".
+event=button/power PBTN.*
 action=/etc/acpi/power-btn.sh %e

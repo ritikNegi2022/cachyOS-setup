@@ -70,7 +70,11 @@ else
     warn "dwm.desktop missing or does not point at /etc/ly/dwm-session"
 fi
 if have_file /etc/acpi/events/power && grep -q 'button/power' /etc/acpi/events/power 2>/dev/null; then
-    pass "acpi power event wired"
+    if grep -q 'PBTN' /etc/acpi/events/power 2>/dev/null; then
+        pass "acpi power event wired (press-only, release won't re-lock)"
+    else
+        warn "acpi rule matches press AND release — power button may ask twice (want PBTN-only, re-run scripts/dwm-config.sh)"
+    fi
 else
     warn "/etc/acpi/events/power missing or wrong (power button may shut down!)"
 fi
