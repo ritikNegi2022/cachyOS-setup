@@ -32,7 +32,7 @@ log "Installing additional packages..."
     pipewire pipewire-pulse pipewire-alsa wireplumber \
     networkmanager \
     bluez bluez-utils \
-    ttf-jetbrains-mono-nerd noto-fonts-emoji \
+    ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-mono noto-fonts-emoji \
     mpv \
     zsh starship \
     jq sqlite \
