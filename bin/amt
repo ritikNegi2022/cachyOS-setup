@@ -38,16 +38,31 @@ if mountpoint -q "$MNT" 2>/dev/null; then
     exit 0
 fi
 
-if ! simple-mtpfs "$MNT" 2>/tmp/amt-err.log; then
-    echo "amt: mount failed — phone must be UNLOCKED in File-transfer mode:" >&2
-    sed 's/^/  /' /tmp/amt-err.log 2>/dev/null >&2
-    echo "  fix: unlock phone, set USB to File transfer, unplug/replug, retry" >&2
-    exit 1
-fi
+# simple-mtpfs stays in the FOREGROUND once mounted, so run it behind a
+# poll loop: up to ~8s for the mount to appear, fail fast with the log
+# otherwise (phone locked / wrong USB mode). Never hangs amt.
+: > /tmp/amt-err.log 2>/dev/null || true
+simple-mtpfs "$MNT" >/tmp/amt-err.log 2>&1 &
+pid=$!
+i=0
+while [ "$i" -lt 40 ]; do
+    mountpoint -q "$MNT" 2>/dev/null && break
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.2
+    i=$((i + 1))
+done
 
 if mountpoint -q "$MNT" 2>/dev/null; then
     echo "amt: mounted at $MNT — browse: lf $MNT"
     echo "amt: when done: amt u  (unmount before unplugging)"
-else
-    die "simple-mtpfs exited 0 but $MNT is not a mount — retry amt"
+    exit 0
 fi
+
+# failed: reap any stray daemon, then explain (never leave a stuck mount)
+kill "$pid" 2>/dev/null || true
+wait "$pid" 2>/dev/null || true
+fusermount -u "$MNT" 2>/dev/null || true
+echo "amt: mount failed — phone must be UNLOCKED in File-transfer mode:" >&2
+sed 's/^/  /' /tmp/amt-err.log 2>/dev/null >&2
+echo "  fix: unlock phone, set USB to File transfer, unplug/replug, retry amt" >&2
+exit 1
