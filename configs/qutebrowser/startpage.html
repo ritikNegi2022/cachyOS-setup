@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>start</title>
+<style>
+  :root {
+    --bg: #111111;
+    --fg: #eeeeee;
+    --dim: #bbbbbb;
+    --faint: #777777;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  main { width: min(560px, 90vw); text-align: center; }
+  #profile {
+    color: var(--faint);
+    font-size: 0.85rem;
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+    padding-left: 0.5em; /* recenter tracked text */
+  }
+  #clock { font-size: 4.5rem; font-weight: bold; letter-spacing: 0.05em; }
+  #date { color: var(--dim); margin-top: 0.4rem; font-size: 1rem; }
+  #net { color: var(--faint); margin-top: 0.9rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <div id="profile">&nbsp;</div>
+  <div id="clock">--:--:--</div>
+  <div id="date">&nbsp;</div>
+  <div id="net">&nbsp;</div>
+</main>
+<script>
+  // Profile name comes from the page URL: each profile loads this file
+  // under its own path (.../qutebrowser/config/... vs
+  // .../qutebrowser-<name>/config/...), because config.py deliberately
+  // does NOT resolve the symlinked config path. Pure string parse, no I/O.
+  function profileFromPath(path) {
+    var m = path.match(/qutebrowser(?:-([A-Za-z0-9_]+))?\/.*$/);
+    if (!m) {
+      return "default";
+    }
+    return m[1] || "developer";
+  }
+
+  function tickClock() {
+    var d = new Date();
+    var p = function (n) { return (n < 10 ? "0" : "") + n; };
+    document.getElementById("clock").textContent =
+      p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+    var days = ["Sunday", "Monday", "Tuesday", "Wednesday",
+                "Thursday", "Friday", "Saturday"];
+    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    document.getElementById("date").textContent =
+      days[d.getDay()] + ", " + p(d.getDate()) + " " +
+      months[d.getMonth()] + " " + d.getFullYear();
+  }
+
+  // Link estimate from the Network Information API (no downloads, no
+  // requests — just what the engine already knows). Absent on some
+  // engines: then we show plain online/offline.
+  function tickNet() {
+    var el = document.getElementById("net");
+    if (!navigator.onLine) {
+      el.textContent = "offline";
+      return;
+    }
+    var c = navigator.connection;
+    if (!c) {
+      el.textContent = "online";
+      return;
+    }
+    var parts = ["online"];
+    if (c.downlink) {
+      parts.push("~" + c.downlink + " Mb/s");
+    }
+    if (c.effectiveType) {
+      parts.push(c.effectiveType);
+    }
+    if (typeof c.rtt === "number") {
+      parts.push(c.rtt + " ms");
+    }
+    el.textContent = parts.join("  ·  ");
+  }
+
+  document.getElementById("profile").textContent =
+    profileFromPath(window.location.pathname);
+  window.setInterval(tickClock, 1000);
+  tickClock();
+  window.setInterval(tickNet, 3000);
+  tickNet();
+  window.addEventListener("online", tickNet);
+  window.addEventListener("offline", tickNet);
+  if (navigator.connection && navigator.connection.addEventListener) {
+    navigator.connection.addEventListener("change", tickNet);
+  }
+</script>
+</body>
+</html>

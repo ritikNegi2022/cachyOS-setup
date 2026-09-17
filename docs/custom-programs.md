@@ -50,6 +50,8 @@ remind once  $(date -d '+1 min' +%H:%M) "test reminder"
 super-clipboard c; echo $?
 ```
 
+**Stuck-Super guard:** `xdotool --clearmodifiers` re-presses modifiers after sending — releasing Super mid-script left Super logically held, so later keys acted as `Super+key` (a pasted newline became `Super+Enter` = stray terminal, `e` became `Super+e` = stray zed, until Super was tapped). The script now explicitly releases Super **before and after** sending, independent of release timing. If it ever desyncs, tap Super once; if `doctor.sh` reports an installed copy differs from the repo, reinstall it (`bash scripts/apply-privileged.sh` covers `/usr/local/bin`).
+
 ---
 
 ## 3. `statusbar` — instant volume/brightness, 1s tick, icons, seconds, per-core + mem
@@ -122,9 +124,23 @@ pgrep -a touchegg                    # want EXACTLY: one --daemon + one bare cli
 ## 6. Other helpers
 
 - **`bin/dsa` / `bin/keypress-sound`** — repo-shipped binaries in `bin/` → `~/.bin/` via `scripts/bin-copy.sh:1`, checked by `doctor.sh` via `bin/checksums.sha256`.
+- **`bin/qb` — qutebrowser profile launcher** (`qb` in terminal, `~/.bin/` via `bin-copy.sh`, initialized by `setup.sh` step 7b / `qb --init`):
+  | Profile | Storage | Isolation |
+  |---|---|---|
+  | `developer` (default) | `~/.config/qutebrowser` (no `--basedir`) | current profile as-is |
+  | `ritik` / `blank` / `luxa` / `callsmaster` | `~/.config/qutebrowser-<name>` | own cookies/history/sessions, side-by-side |
+  - Same config everywhere: isolated profiles symlink `config.py`, `autoconfig.yml`, `startpage.html`, `greasemonkey/` from the developer profile (a real file you place there = deliberate customization, never overwritten).
+  - `qb` / `qb developer` / `qb luxa github.com` / `qb --list` / `qb --init`; unknown words pass through as URLs/search. Tab completion: `eval "$(qb --completion-bash)"`.
 - **`super-enter-live.py`** — fallback `Super+Enter` → `alacritty` via `pynput` until `dwm` rebuilt (`Super+Enter`/`Super+Shift+Enter` both `termcmd`, `Super+Ctrl+Return` zoom). Installed to `~/.local/bin/super-enter-live.py`, started by `dwm-session:42` if `strings dwm` lacks new bindings.
 - **`locale`** `configs/locale/locale.conf:1` → `/etc/locale.conf` `LANG=en_IN.UTF-8` (fixes `btop` `No UTF-8`).
 - **`xorg` natural scroll** `configs/xorg/30-natural-scroll.conf:1` → `/etc/X11/xorg.conf.d/`.
+- **Browser configs** (`Super+b` qutebrowser / `Super+Shift+b` Brave / `Super+Alt+b` Zen) — settings + themes only, no bookmarks or extras:
+  - `configs/qutebrowser/` → `~/.config/qutebrowser/` verbatim (`config.py`: monochrome dark UI theme + dark pages, Google default search, `tt` toggles tab bar + statusbar together, local `startpage.html` as start/default page — clock + day/date + profile name + link-speed estimate, never blank (`last_close=startpage`); `config.py` resolves the page with `absolute()` not `resolve()` so symlinked profiles keep their own URL and the page shows the right profile name; adblock with EasyList/EasyPrivacy/Fanboy-annoyance/uBO lists — refresh via `:adblock-update`, minimal/perf tuning: last-tab-close shows startpage, tab bar only with 2+ tabs, no autoplay, lazy session restore, compact completion; alacritty+nvim editor; `config.py` calls `config.load_autoconfig()` so `:set` changes in `autoconfig.yml` keep loading).
+  - `configs/qutebrowser/greasemonkey/` → `~/.config/qutebrowser/greasemonkey/` (qutebrowser's extension mechanism — Chrome extensions don't work on QtWebEngine). Ships `youtube-ad-skip.js`: auto-clicks skip buttons, mutes + 16x fast-forwards unskippable ads, hides overlay/banner slots. No request blocking, so it rarely trips adblock-detection walls — but YouTube renames player classes periodically; if ads slip through, update the selectors (inspect with `wi`). Restart qutebrowser after userscript changes. For guaranteed ad-free YouTube, Brave shields (`Super+Shift+b`) or Zen + uBlock Origin (`Super+Alt+b`) are stronger options.
+  - `configs/brave/Preferences` → `Brave-Browser/Default/` (settings only, missing file only — live profile never overwritten; Google account identifiers are scrubbed from the vendored copy since this repo is public — sign in again on a fresh machine).
+  - `configs/zen/{prefs.js,zen-keyboard-shortcuts.json}` (settings) + `{zen-themes.json,chrome/zen-themes.css}` (themes) → `~/.config/zen/<profile>/` (missing files only; launch zen once first so the profile exists).
+  - Everything else stays out (bookmarks, logins, cookies, history, caches) — re-sync on a new machine (`docs/after-setup.md` D1).
+  - Refresh snapshots from the live install: `bash scripts/export-browser-configs.sh` (then commit).
 
 ## 7. Power button → lock screen (not shutdown, apps kept)
 
@@ -175,6 +191,7 @@ screen-lock --test  # dry run: shows what would be locked, locks nothing
 | Package | Purpose |
 |---|---|
 | `alacritty` | GPU terminal (`Super+Enter`, `Super+g` lf) `alacritty.toml` |
+| `qutebrowser` | keyboard-driven vim-like primary browser (`Super+b`), dark mode + adblock (`python-adblock`), config fully vendored in `configs/qutebrowser/` |
 | `tmux` | multiplexer `Ctrl+Space` prefix, `tmux.conf` monochrome |
 | `neovim` | editor `nvim` `habamax` monochrome `init.lua` |
 | `lf` | terminal file manager `Super+g` |
@@ -220,8 +237,8 @@ screen-lock --test  # dry run: shows what would be locked, locks nothing
 
 | Package | Purpose |
 |---|---|
-| `brave-bin` | Brave browser `Super+b` → tag free (was 9) |
-| `zen-browser-bin` | Zen browser `Super+Shift+b` |
+| `brave-bin` | Brave browser `Super+Shift+b` → tag free (was `Super+b`) |
+| `zen-browser-bin` | Zen browser `Super+Alt+b` (physical `Super+Ctrl+b` while the `Alt↔Ctrl` swap is on; `Super+Ctrl+b` alias covers swap-off) |
 | `pgadmin4-desktop` | pgAdmin 4 desktop (flake-allow fail) |
 | `dwm` | window manager built with `configs/dwm/config.h` (custom `shiftview` `togglefullscreen` `togglegroup` `//` icons, `showbar=0`) |
 

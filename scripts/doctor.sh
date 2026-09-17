@@ -150,6 +150,26 @@ if have_exec /usr/local/bin/super-clipboard || have_exec "$HOME/.local/bin/super
 else
     warn "super-clipboard missing (Super+C/X/V universal copy/paste won't work)"
 fi
+# Stuck-Super guard: the script must release Super before AND after sending
+# (else --clearmodifiers restore leaves Super held: pasted newline becomes
+# Super+Enter = stray terminal, e becomes Super+e = stray zed). Installed
+# copies must also match the repo — config.h tries /usr/local/bin FIRST, so
+# a stale copy there keeps the glitch alive even when the repo is fixed.
+if grep -q "keyup Super_L Super_R" "$REPO_ROOT/configs/dwm/super-clipboard.sh" 2>/dev/null; then
+    pass "super-clipboard stuck-Super guard present in repo (keyup before+after)"
+else
+    warn "super-clipboard repo copy lacks the stuck-Super guard (paste may leave Super held)"
+fi
+for _scb in /usr/local/bin/super-clipboard "$HOME/.local/bin/super-clipboard"; do
+    if have_file "$_scb"; then
+        if cmp -s "$REPO_ROOT/configs/dwm/super-clipboard.sh" "$_scb"; then
+            pass "installed super-clipboard in sync with repo ($_scb)"
+        else
+            warn "installed $_scb differs from repo (stale copy keeps old bugs — fix: bash scripts/apply-privileged.sh)"
+        fi
+    fi
+done
+unset _scb
 if have_file "$HOME/.config/alacritty/alacritty.toml" && grep -q 'Super.*Copy' "$HOME/.config/alacritty/alacritty.toml" 2>/dev/null; then
     pass "alacritty Super+C/V bindings present (terminal-safe copy/paste)"
 else
@@ -237,6 +257,14 @@ if grep -q "MODKEY.*XK_Return.*spawn.*termcmd" "$REPO_ROOT/configs/dwm/config.h"
     fi
 else
     warn "dwm Super+Enter not bound to terminal in config.h"
+fi
+# dwm browser keybinds (Super+b=qutebrowser, Super+Shift+b=brave, Super+Alt+b=zen)
+if grep -q "XK_b.*qutebrowsercmd" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null \
+&& grep -q "ShiftMask.*XK_b.*bravecmd" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null \
+&& grep -q "Mod1Mask.*XK_b.*zencmd" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
+    pass "dwm browser binds present (Super+b=qutebrowser, Super+Shift+b=brave, Super+Alt+b=zen)"
+else
+    warn "dwm browser binds wrong in config.h (want b=qutebrowser, Shift+b=brave, Alt+b=zen + rebuild)"
 fi
 # Statusbar instant feedback (USR1) + 1s refresh with seconds + icons
 if grep -q "trap.*USR1" "$REPO_ROOT/configs/dwm/statusbar.sh" 2>/dev/null && grep -q "pkill -USR1" "$REPO_ROOT/configs/dwm/config.h" 2>/dev/null; then
@@ -489,8 +517,8 @@ section "5. dwm binary"
 DWM_BIN="$(command -v dwm 2>/dev/null || true)"
 if [ -n "$DWM_BIN" ]; then
     pass "dwm binary: $DWM_BIN"
-    if grep -aq alacritty "$DWM_BIN" && grep -aq zen-browser "$DWM_BIN"; then
-        pass "custom config.h embedded (alacritty + zen-browser keybinds found)"
+    if grep -aq alacritty "$DWM_BIN" && grep -aq qutebrowser "$DWM_BIN" && grep -aq brave "$DWM_BIN" && grep -aq zen-browser "$DWM_BIN"; then
+        pass "custom config.h embedded (alacritty + qutebrowser/brave/zen-browser keybinds found)"
     else
         fail "dwm looks STOCK — build did not use configs/dwm/config.h (re-run scripts/dwm-build.sh)"
     fi
@@ -528,6 +556,97 @@ if have_bin zed || have_exec "$HOME/.bin/zed"; then
     pass "zed launchable (terminal `zed` + dwm Super+e)"
 else
     warn "zed NOT launchable (want ~/.bin/zed -> /usr/bin/zeditor — re-run scripts/bin-copy.sh)"
+fi
+# Browsers (dwm Super+b=qutebrowser, Super+Shift+b=brave, Super+Alt+b=zen)
+if have_bin qutebrowser; then
+    pass "qutebrowser launchable (dwm Super+b)"
+else
+    fail "qutebrowser NOT launchable (re-run scripts/install.sh)"
+fi
+if have_bin brave; then
+    pass "brave launchable (dwm Super+Shift+b)"
+else
+    fail "brave NOT launchable (re-run scripts/install.sh)"
+fi
+if have_bin zen-browser; then
+    pass "zen-browser launchable (dwm Super+Alt+b)"
+else
+    fail "zen-browser NOT launchable (re-run scripts/install.sh)"
+fi
+# Browser user configs (installed by setup.sh step 5)
+if have_file "$HOME/.config/qutebrowser/config.py" && have_file "$HOME/.config/qutebrowser/autoconfig.yml" && have_file "$HOME/.config/qutebrowser/startpage.html"; then
+    pass "qutebrowser user config present (~/.config/qutebrowser/)"
+else
+    warn "qutebrowser user config missing (re-run setup.sh step 5)"
+fi
+if have_file "$REPO_ROOT/configs/qutebrowser/config.py" && have_file "$REPO_ROOT/configs/qutebrowser/autoconfig.yml" && have_file "$REPO_ROOT/configs/qutebrowser/startpage.html"; then
+    pass "repo configs/qutebrowser/ present"
+else
+    warn "repo configs/qutebrowser/ missing (refresh: bash scripts/export-browser-configs.sh)"
+fi
+# Adblocking needs the python adblock module (else method silently degrades)
+if python3 -c "import adblock" 2>/dev/null; then
+    pass "python adblock module importable (qutebrowser network adblocking works)"
+else
+    warn "python adblock module missing (YouTube/website ads won't block — fix: sudo pacman -S python-adblock)"
+fi
+# YouTube ad userscript (repo-owned, installed to live greasemonkey dir)
+if have_file "$REPO_ROOT/configs/qutebrowser/greasemonkey/youtube-ad-skip.js"; then
+    pass "repo qutebrowser YouTube ad userscript present"
+else
+    warn "repo configs/qutebrowser/greasemonkey/youtube-ad-skip.js missing"
+fi
+if have_file "$HOME/.config/qutebrowser/greasemonkey/youtube-ad-skip.js"; then
+    pass "live qutebrowser YouTube ad userscript installed"
+else
+    warn "live YouTube ad userscript missing (re-run setup.sh step 5, then restart qutebrowser)"
+fi
+# qb profile launcher (bin/qb -> ~/.bin/qb) + the 4 isolated basedirs.
+# developer = the default profile above (no --basedir); the rest share its
+# config via symlinks (a real file = deliberate customization, left alone).
+if have_exec "$HOME/.bin/qb"; then
+    pass "qb launchable (qutebrowser profiles: ritik/blank/luxa/developer/callsmaster)"
+else
+    warn "qb missing from ~/.bin (re-run scripts/bin-copy.sh)"
+fi
+if have_file "$REPO_ROOT/bin/qb"; then
+    pass "repo bin/qb present"
+else
+    warn "repo bin/qb missing"
+fi
+for _qp in ritik blank luxa callsmaster; do
+    _qdir="$HOME/.config/qutebrowser-$_qp"
+    if [[ -d "$_qdir/config" && -e "$_qdir/config/config.py" ]]; then
+        pass "qutebrowser profile ready: $_qp"
+    else
+        warn "qutebrowser profile missing: $_qp (fix: qb --init)"
+    fi
+done
+unset _qp _qdir
+if have_file "$HOME/.config/BraveSoftware/Brave-Browser/Default/Preferences"; then
+    pass "brave profile present (Preferences)"
+else
+    info "brave profile not found yet (launch brave once, then re-run setup.sh step 5)"
+fi
+if have_file "$REPO_ROOT/configs/brave/Preferences"; then
+    pass "repo configs/brave/ settings present"
+else
+    warn "repo configs/brave/Preferences missing (refresh: bash scripts/export-browser-configs.sh)"
+fi
+_ZEN_PROF=""
+if have_file "$HOME/.config/zen/profiles.ini"; then
+    _ZEN_PROF="$(grep -m1 '^Path=' "$HOME/.config/zen/profiles.ini" 2>/dev/null | cut -d= -f2)"
+fi
+if [[ -n "$_ZEN_PROF" && -d "$HOME/.config/zen/$_ZEN_PROF" ]]; then
+    pass "zen profile present ($HOME/.config/zen/$_ZEN_PROF)"
+else
+    info "zen profile not found yet (launch zen-browser once, then re-run setup.sh step 5)"
+fi
+unset _ZEN_PROF
+if have_file "$REPO_ROOT/configs/zen/prefs.js" && have_file "$REPO_ROOT/configs/zen/zen-keyboard-shortcuts.json"; then
+    pass "repo configs/zen/ settings+themes present"
+else
+    warn "repo configs/zen/ settings missing (refresh: bash scripts/export-browser-configs.sh)"
 fi
 if have_bin pgadmin4 || have_exec "$HOME/.bin/pgadmin4"; then
     pass "pgadmin4 launchable (terminal `pgadmin4`)"

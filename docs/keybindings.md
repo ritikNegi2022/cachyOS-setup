@@ -10,8 +10,9 @@
 | `Super + Enter` | open **alacritty** (`termcmd`) | `config.h:129` |
 | `Super + Shift + Enter` | open **alacritty** (alternate, both work) | `config.h:130` |
 | `Super + Ctrl + Enter` | **zoom** focused window to master (old `Super+Enter`) | `config.h:131` |
-| `Super + b` | **Brave** (`brave`) | `config.h:132` |
-| `Super + Shift + b` | **Zen Browser** (`zen-browser`) | `config.h:133` |
+| `Super + b` | **qutebrowser** (`qutebrowser`, primary browser) | `config.h` `qutebrowsercmd` |
+| `Super + Shift + b` | **Brave** (`brave`) | `config.h` `bravecmd` |
+| `Super + Alt + b` | **Zen Browser** (`zen-browser`) | `config.h` `zencmd` (`MODKEY\|Mod1Mask`; `MODKEY\|ControlMask` alias for when the `Alt↔Ctrl` swap is off — with the swap on, the physical chord is `Super + physical-Ctrl + b`) |
 | `Super + e` | **Zed** (`zeditor`) | `config.h:134` |
 | `Super + g` | `alacritty -e lf` (file manager) | `config.h:135` |
 | `Super + Shift + g` | `alacritty -e lazygit` | `config.h:136` |

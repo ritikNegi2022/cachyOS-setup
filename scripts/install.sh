@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install yay (AUR helper) + all packages — minimal TUI setup
-# GUI is limited to: Zed editor + two browsers (Brave + Zen). No compositor, no wallpaper.
+# GUI is limited to: Zed editor + three browsers (qutebrowser + Brave + Zen). No compositor, no wallpaper.
 # Part of arch-setup — see setup.sh
 
 set -euo pipefail
@@ -72,6 +72,7 @@ log "Installing official repo packages..."
     ripgrep fd fzf tree bat eza \
     ly zed \
     dunst \
+    qutebrowser python-adblock \
     zathura zathura-pdf-mupdf \
     brightnessctl playerctl \
     maim slop xdg-utils libnotify slock bc \
@@ -92,8 +93,10 @@ log "Official repo packages installed."
 log "Installing AUR packages..."
 
 # NOTE: dwm is installed by scripts/dwm-build.sh (with our config.h injected).
-# Browsers: brave-bin (chromium-based) + zen-browser-bin (firefox-based).
-# Browsers are hard requirements — fail loudly if they can't install.
+# Browsers: qutebrowser ships from the official repos (installed in section 2
+# above — keyboard-driven primary browser); brave-bin (chromium-based) +
+# zen-browser-bin (firefox-based) come from the AUR below.
+# The AUR browsers are hard requirements — fail loudly if they can't install.
 yay -S --noconfirm --needed \
     brave-bin \
     zen-browser-bin || {

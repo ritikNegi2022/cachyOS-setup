@@ -17,7 +17,7 @@
 
 - **Minimal GUI on purpose.** No compositor, no wallpaper (pure black root
   window), no tray applets, no display-manager fluff. GUI apps are limited to:
-  Zed editor, Brave + Zen browsers, pgAdmin 4 desktop. Everything else is
+   Zed editor, qutebrowser + Brave + Zen browsers, pgAdmin 4 desktop. Everything else is
   terminal/CLI: `nmcli`/`nmtui` for Wi-Fi, `bluetoothctl` for Bluetooth,
   `wpctl` for audio (`scripts/install.sh:1`, `scripts/extra-packages.sh:1`).
 - **Keyboard-first.** Super (Windows key) is the main modifier everywhere:
@@ -91,7 +91,7 @@ Run once from the repo root: `./setup.sh` (needs Arch/CachyOS + sudo).
 | Step | Script | What it installs/configures |
 |---|---|---|
 | 0 | `scripts/locale-setup.sh` | UTF-8 locale (`en_IN.UTF-8` + `en_US.UTF-8`), `/etc/locale.conf`, shell `LANG`/`LC_ALL` exports (§17) |
-| 1 | `scripts/install.sh` | `yay` (AUR helper) + all core packages: Xorg stack, alacritty, tmux, nvim, lf, lazygit, btop, dev tools, ly, zed, dunst, browsers (`brave-bin`, `zen-browser-bin`), `slock` (repo fallback; black build via Step 3b), LSP servers, node/rust/python toolchains, pip `mypy`, npm globals |
+| 1 | `scripts/install.sh` | `yay` (AUR helper) + all core packages: Xorg stack, alacritty, tmux, nvim, lf, lazygit, btop, dev tools, ly, zed, dunst, browsers (`qutebrowser` official + `brave-bin`, `zen-browser-bin` AUR), `slock` (repo fallback; black build via Step 3b), LSP servers, node/rust/python toolchains, pip `mypy`, npm globals |
 | 2 | `scripts/extra-packages.sh` | Audio (ALSA firmwares, PipeWire, wireplumber), NetworkManager, Bluetooth, fonts, mpv, zsh+starship, jq/sqlite, curl/wget/openssh, pass/gnupg, avahi, zip, exfat/ntfs; enables `bluetooth`, `NetworkManager`, `avahi-daemon` |
 | 3 | `scripts/dwm-build.sh` | Builds **dwm from AUR** with `configs/dwm/config.h` injected (see §3) |
 | 4 | `scripts/dwm-config.sh` | ly config + session files, statusbar, keyswap, remind/ly-logout/screen-lock helpers, acpid + logind power wiring (§14), touchegg daemon+client, natural-scroll Xorg conf, super-clipboard, ly service enable |
@@ -128,7 +128,10 @@ sudo without a full reinstall), `scripts/doctor.sh` (read-only health check,
   `Super+Ctrl+Return` zooms a window to master, `Super+F12` shows/hides the
   bar (hidden by default, `showbar = 0` in `config.h`).
 - **App launchers** (`config.h:100`): `Super+Return` / `Super+Shift+Return` →
-  alacritty; `Super+b` → Brave; `Super+Shift+b` → Zen; `Super+e` → Zed;
+   alacritty; `Super+b` → qutebrowser (primary); `Super+Shift+b` → Brave;
+   `Super+Alt+b` → Zen (with the session `Alt↔Ctrl` swap on, press physical
+   `Super+Ctrl+b`; a `Super+Ctrl+b` alias covers the swap-off case);
+   `Super+e` → Zed;
   `Super+g` → `lf`; `Super+Shift+g` → lazygit; `Super+Shift+s` → btop;
   `Super+c/x/v` → universal copy/cut/paste (§13).
 - Full shortcut tables: `docs/keybindings.md` (§1 of that file is generated
@@ -519,9 +522,13 @@ Installed by Step 1 (`scripts/install.sh`), all on PATH:
 | `configs/systemd/*.service` | `~/.config/systemd/user/` |
 | `configs/xorg/30-natural-scroll.conf` | `/etc/X11/xorg.conf.d/` |
 | `configs/{alacritty.toml,tmux.conf,nvim/,lf/,touchegg.conf,zed/,dunst/dunstrc}` | `~/.config/…` |
+| `configs/qutebrowser/` | `~/.config/qutebrowser/` (settings: `config.py` + `autoconfig.yml`) |
+| `configs/brave/Preferences` | `~/.config/BraveSoftware/Brave-Browser/Default/` (settings, missing file only, never overwrite) |
+| `configs/zen/{prefs.js,zen-keyboard-shortcuts.json,zen-themes.json,chrome/}` | `~/.config/zen/<profile>/` (settings + themes, missing files only; profile must exist — launch zen once) |
 | `configs/locale/locale.conf` | `/etc/locale.conf` |
 | `configs/ssh/git_blank.pub` | reference only (private key never in repo) |
 | `bin/dsa`, `bin/keypress-sound` | `~/.bin/` |
+| `bin/qb` | `~/.bin/qb` (qutebrowser profiles: `qb [ritik\|blank\|luxa\|developer\|callsmaster] [url]`) |
 | `docs/*.md` | `~/Documents/`, `~/`, `/usr/share/doc/cachyOS-setup/` |
 
 Shell-rc markers (idempotent, re-runnable): `cachyOS-setup PATH`,

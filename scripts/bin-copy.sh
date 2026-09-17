@@ -48,6 +48,7 @@ REPO_BINARIES=(
     "keypress-sound"
     "aphone"
     "amt"
+    "qb"
 )
 
 # Verify repo binaries against the checksum manifest BEFORE installing:
@@ -87,7 +88,12 @@ for binary in "${REPO_BINARIES[@]}"; do
         continue
     fi
 
-    cp "$src" "$dst"
+    # --remove-destination: unlink first so replacing a RUNNING binary doesn't
+    # die with "Text file busy" (ETXTBSY). Happens with keypress-sound: its
+    # user service runs straight from ~/.bin, so a plain cp aborts this whole
+    # script (and setup.sh with it) on every re-run while logged in. Unlinking
+    # is safe — the running process keeps its old inode until next login.
+    cp --remove-destination "$src" "$dst"
     chmod +x "$dst"
     log "  Installed from repo: $binary"
     COPIED=$((COPIED + 1))
@@ -294,7 +300,7 @@ log ""
 log "============================================"
 log "  BIN COPY COMPLETE"
 log "============================================"
-log "  Repo source:  $REPO_ROOT/bin/ (dsa, keypress-sound, aphone, amt)"
+log "  Repo source:  $REPO_ROOT/bin/ (dsa, keypress-sound, aphone, amt, qb)"
 log "  Extra source: $BIN_SRC (optional, old system)"
 log "  Destination:  $BIN_DST"
 log "  Copied: $COPIED binaries"
@@ -305,6 +311,7 @@ log "    - dsa (device security/authentication tool)"
 log "    - keypress-sound (keyboard sound effect tool, systemd user service)"
 log "    - aphone (Android file transfer over USB via adb: ls/pull/push)"
 log "    - amt (Android MTP mount at ~/mnt/phone for TUI browsing with lf: amt | amt u)"
+log "    - qb (qutebrowser profile launcher: qb [ritik|blank|luxa|developer|callsmaster] [url])"
 log "  Short GUI alias (shim, needs package installed):"
 log "    - aft -> android-file-transfer (MTP drag-and-drop window)"
 log ""

@@ -3,8 +3,16 @@
 # Installed to /usr/local/bin/super-clipboard (and ~/.local/bin)
 # Called by dwm: Super+c/x/v bindings.
 #
-# Why --clearmodifiers? Super is still held when dwm spawns this; without it
-# xdotool would emit Super+Ctrl+C which apps ignore.
+# Why explicit Super keyup (NOT just --clearmodifiers)? Super is still held
+# when dwm spawns this. xdotool --clearmodifiers "restores" modifiers by
+# re-pressing them after sending — if you physically release Super mid-script
+# (normal on a quick tap: sleep + xprop round-trips take ~200ms), that restore
+# leaves Super LOGICALLY held with no key down. Every later key then acts as
+# Super+key: a pasted newline becomes Super+Enter (spawns a terminal), typing
+# e becomes Super+e (opens zed), until Super is tapped again. The release_super
+# calls below clear Super before AND after sending, so the outcome does not
+# depend on release timing. (Only caveat: holding Super across two chords
+# without releasing in between won't chain — release Super between chords.)
 # Why terminal detection? Alacritty's copy is Ctrl+Shift+C (Ctrl+C would SIGINT
 # and break the current command). We send the terminal binding only there.
 #
@@ -12,6 +20,13 @@
 # Control, not physical position.
 
 action="$1"  # c | x | v
+
+release_super() {
+    # Synthetic release of both Super keys. No-op when Super is already up;
+    # clears the logically-stuck Super that --clearmodifiers restore can leave
+    # behind (see header). A later physical release is a harmless no-op.
+    xdotool keyup Super_L Super_R 2>/dev/null || true
+}
 
 # tiny race: let Super release a bit, also gives dwm time to focus correct window
 sleep 0.10 2>/dev/null || true
@@ -35,6 +50,11 @@ if [ "$is_term" = 0 ]; then
     alt_cls="$(xdotool getwindowclassname "$win" 2>/dev/null | tr '[:upper:]' '[:lower:]')"
     case "$alt_cls" in *alacritty*|*xterm*) is_term=1 ;; esac
 fi
+
+# Clear Super BEFORE sending: with Super logically up, the keys below land as
+# plain Ctrl(+Shift)+key even if Super is still physically held, and
+# --clearmodifiers finds nothing to (mis-)restore afterwards.
+release_super
 
 case "$action" in
     c|C)
@@ -61,3 +81,8 @@ case "$action" in
         fi
         ;;
 esac
+
+# ... and AFTER sending: guarantees Super is up on exit no matter what the
+# --clearmodifiers restore above just did. This is the line that kills the
+# paste-then-stray-Super+Enter (spawns terminal) / Super+e (opens zed) glitch.
+release_super

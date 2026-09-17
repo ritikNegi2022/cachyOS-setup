@@ -133,10 +133,10 @@
 ## Phase D — app accounts & first-run
 
 ### D1. Browsers: sync, passwords, default
-- **Do:** open Brave (`Super+b`) and Zen (`Super+Shift+b`); sign into sync,
-  import passwords/bookmarks from your old machine; then set your default:
+- **Do:** open qutebrowser (`Super+b`), Brave (`Super+Shift+b`) and Zen (`Super+Alt+b` — physical `Super+Ctrl+b` while the `Alt↔Ctrl` swap is on); sign into sync,
+  import passwords/bookmarks from your old machine (repo restores settings + themes only — bookmarks/logins re-sync manually); then set your default:
   ```bash
-  ls /usr/share/applications | grep -iE 'brave|zen'   # exact .desktop names
+  ls /usr/share/applications | grep -iE 'qutebrowser|brave|zen'   # exact .desktop names
   xdg-settings set default-web-browser brave-browser.desktop
   ```
 - **Why manual:** sync passphrases + choices; scripts can't log into your accounts.

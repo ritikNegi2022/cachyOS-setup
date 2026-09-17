@@ -191,6 +191,7 @@ void togglegroup(const Arg *arg) {
 static char dmenumon[2] = "0"; /* referenced by spawn() in dwm.c even when unbound */
 static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
 static const char *termcmd[]   = { "alacritty", NULL };
+static const char *qutebrowsercmd[] = { "qutebrowser", NULL };
 static const char *bravecmd[]  = { "brave", NULL };
 static const char *zencmd[]    = { "zen-browser", NULL };
 static const char *editorcmd[] = { "zeditor", NULL };   /* zed package binary is "zeditor" (+ ~/.bin/zed shim for terminal) */
@@ -222,8 +223,15 @@ static const Key keys[] = {
     { MODKEY,              XK_Return,   spawn,          {.v = termcmd } },          /* Super+Enter -> terminal (was zoom) */
     { MODKEY|ShiftMask,    XK_Return,   spawn,          {.v = termcmd } },          /* Super+Shift+Enter -> terminal (alternate, both work) */
     { MODKEY|ControlMask,  XK_Return,   zoom,           {0} },          /* alternate zoom (was Super+Enter) */
-    { MODKEY,              XK_b,        spawn,          {.v = bravecmd } },
-    { MODKEY|ShiftMask,    XK_b,        spawn,          {.v = zencmd } },
+    { MODKEY,              XK_b,        spawn,          {.v = qutebrowsercmd } },  /* Super+b -> qutebrowser (primary browser) */
+    { MODKEY|ShiftMask,    XK_b,        spawn,          {.v = bravecmd } },      /* Super+Shift+b -> Brave */
+    /* Super+Alt+b -> Zen. NOTE: keyswap.sh swaps Alt<->Ctrl session-wide, so
+       with the swap active the physical chord is Super+physical-Ctrl+b
+       (physical Ctrl emits Mod1). The ControlMask alias below keeps Zen
+       reachable when the swap is off (physical Super+Alt+b). Super+Ctrl+b
+       is otherwise unbound, so no conflict either way. */
+    { MODKEY|Mod1Mask,     XK_b,        spawn,          {.v = zencmd } },
+    { MODKEY|ControlMask,  XK_b,        spawn,          {.v = zencmd } },
     { MODKEY,              XK_e,        spawn,          {.v = editorcmd } },
     { MODKEY,              XK_g,        spawn,          {.v = filemgrcmd } },
     { MODKEY|ShiftMask,    XK_g,        spawn,          {.v = lazygitcmd } },

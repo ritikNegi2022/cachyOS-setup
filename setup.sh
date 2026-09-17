@@ -114,6 +114,64 @@ if [[ -d "$THIS_DIR/configs/zed/extensions" ]]; then
 fi
 unset ZED_EXT_DIR
 
+# Browsers (Super+b=qutebrowser, Super+Shift+b=brave, Super+Alt+b=zen)
+# Only settings + themes are vendored — no bookmarks or extras.
+# qutebrowser config is fully owned by this repo — overwrite install.
+mkdir -p "$HOME/.config/qutebrowser"
+cp "$THIS_DIR/configs/qutebrowser/config.py" "$HOME/.config/qutebrowser/config.py"
+cp "$THIS_DIR/configs/qutebrowser/autoconfig.yml" "$HOME/.config/qutebrowser/autoconfig.yml"
+cp "$THIS_DIR/configs/qutebrowser/startpage.html" "$HOME/.config/qutebrowser/startpage.html"
+# Greasemonkey userscripts (loaded from here on qutebrowser start — restart
+# qutebrowser after changes). Currently: YouTube ad auto-skip + mute.
+mkdir -p "$HOME/.config/qutebrowser/greasemonkey"
+for _gm in "$THIS_DIR/configs/qutebrowser/greasemonkey/"*.js; do
+    [[ -f "$_gm" ]] || continue
+    cp "$_gm" "$HOME/.config/qutebrowser/greasemonkey/$(basename "$_gm")"
+    log "Installed qutebrowser userscript: $(basename "$_gm")"
+done
+unset _gm
+# Brave: Preferences (settings) only. Never overwrite a live profile's file —
+# copy only if missing (logins / bookmarks re-sync on the new machine).
+if [[ -d "$HOME/.config/BraveSoftware/Brave-Browser/Default" ]]; then
+    if [[ ! -f "$HOME/.config/BraveSoftware/Brave-Browser/Default/Preferences" ]]; then
+        cp "$THIS_DIR/configs/brave/Preferences" "$HOME/.config/BraveSoftware/Brave-Browser/Default/Preferences"
+        log "Restored Brave Preferences from repo"
+    fi
+else
+    warn "Brave profile not found — launch brave once, then re-run setup.sh step 5"
+fi
+# Zen: settings + themes into the default release profile (never overwrite
+# live files). A fresh install has no profile yet (zen creates one with a
+# random ID on first launch) — launch zen once and re-run this step.
+_ZEN_PROFILE=""
+if [[ -f "$HOME/.config/zen/profiles.ini" ]]; then
+    _ZEN_PROFILE="$(grep -m1 '^Path=' "$HOME/.config/zen/profiles.ini" | cut -d= -f2)"
+fi
+if [[ -z "$_ZEN_PROFILE" ]]; then
+    _ZEN_PROFILE="$(basename "$(echo "$HOME"/.config/zen/*.Default* 2>/dev/null | head -n1)")"
+fi
+if [[ -n "$_ZEN_PROFILE" && -d "$HOME/.config/zen/$_ZEN_PROFILE" ]]; then
+    for _zf in prefs.js zen-keyboard-shortcuts.json zen-themes.json; do
+        if [[ -f "$THIS_DIR/configs/zen/$_zf" && ! -f "$HOME/.config/zen/$_ZEN_PROFILE/$_zf" ]]; then
+            cp "$THIS_DIR/configs/zen/$_zf" "$HOME/.config/zen/$_ZEN_PROFILE/$_zf"
+            log "Restored Zen $_zf from repo"
+        fi
+    done
+    if [[ -f "$THIS_DIR/configs/zen/chrome/zen-themes.css" ]]; then
+        mkdir -p "$HOME/.config/zen/$_ZEN_PROFILE/chrome"
+        if [[ ! -f "$HOME/.config/zen/$_ZEN_PROFILE/chrome/zen-themes.css" ]]; then
+            cp "$THIS_DIR/configs/zen/chrome/zen-themes.css" "$HOME/.config/zen/$_ZEN_PROFILE/chrome/zen-themes.css"
+            log "Restored Zen chrome/zen-themes.css from repo"
+        fi
+    fi
+    unset _zf
+else
+    warn "Zen profile not found — launch zen-browser once, then re-run setup.sh step 5"
+fi
+unset _ZEN_PROFILE
+# Refresh repo snapshots from this machine any time:
+#   bash scripts/export-browser-configs.sh
+
 # Keybindings doc — readable on new system + in repo
 mkdir -p "$HOME/Documents" "$HOME/.local/share/cachyOS-setup"
 if [[ -f "$THIS_DIR/docs/keybindings.md" ]]; then
@@ -164,6 +222,13 @@ bash "$THIS_DIR/scripts/ssh-setup.sh"
 log "=== Step 7: Copy ~/.bin binaries ==="
 bash "$THIS_DIR/scripts/bin-copy.sh"
 
+log "=== Step 7b: qutebrowser profiles (qb launcher) ==="
+if [[ -x "$HOME/.bin/qb" ]]; then
+    "$HOME/.bin/qb" --init
+else
+    warn "~/.bin/qb missing — qutebrowser profiles not initialized (re-run scripts/bin-copy.sh)"
+fi
+
 log "=== Step 8: PostgreSQL setup ==="
 bash "$THIS_DIR/scripts/postgres-setup.sh"
 
@@ -198,8 +263,10 @@ echo "    sudo systemctl set-default multi-user.target"
 echo ""
 echo "  DWM KEYBINDINGS (configs/dwm/config.h):"
 echo "    Super+Return / Super+Shift+Return -> alacritty (terminal, both work; zoom moved to Super+Ctrl+Return)"
-echo "    Super+b       -> Brave browser (tag 9)"
-echo "    Super+Shift+b -> Zen browser (tag 9)"
+    echo "    Super+b       -> qutebrowser (primary browser)"
+    echo "    Super+Shift+b -> Brave browser"
+    echo "    Super+Alt+b   -> Zen browser (physical Super+Ctrl+b while Alt<->Ctrl swap is on)"
+    echo "    qb [profile]  -> qutebrowser profiles: ritik/blank/luxa/developer/callsmaster (default developer)"
 echo "    Super+e       -> Zed editor (tag 10)"
 echo "    Super+g       -> lf file manager"
 echo "    Super+Shift+g -> lazygit"
@@ -254,6 +321,6 @@ echo ""
 echo "  MINIMAL GUI POLICY:"
 echo "    - No compositor, no wallpaper (pure black root window via xsetroot)"
 echo "    - No tray apps: nmcli/btctl CLI + wpctl for audio"
-echo "    - GUI limited to: Zed editor + Brave/Zen browsers + pgAdmin desktop"
+    echo "    - GUI limited to: Zed editor + qutebrowser/Brave/Zen browsers + pgAdmin desktop"
 echo ""
 log "============================================"

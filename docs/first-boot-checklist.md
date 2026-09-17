@@ -113,9 +113,10 @@ Setup: ______________  Date: ______________
 
 ## 9. Browsers
 
-- [ ] **Super+b** → Brave opens on tag 9
-- [ ] **Super+Shift+b** → Zen opens on tag 9
-- [ ] Both render fonts + emoji correctly (Nerd Fonts + noto-emoji installed)
+- [ ] **Super+b** → qutebrowser opens (primary browser)
+- [ ] **Super+Shift+b** → Brave opens
+- [ ] **Super+Alt+b** → Zen opens (physical `Super+Ctrl+b` while the `Alt↔Ctrl` swap is on)
+- [ ] All three render fonts + emoji correctly (Nerd Fonts + noto-emoji installed)
 
 ---
 

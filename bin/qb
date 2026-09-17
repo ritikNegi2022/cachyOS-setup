@@ -1,0 +1,163 @@
+#!/bin/bash
+# qb — qutebrowser profile launcher (cachyOS-setup)
+#
+# Profiles (see configs/qutebrowser/ for the shared config):
+#   developer   current default profile ~/.config/qutebrowser (no --basedir)
+#   ritik       isolated  ~/.config/qutebrowser-ritik
+#   blank       isolated  ~/.config/qutebrowser-blank
+#   luxa        isolated  ~/.config/qutebrowser-luxa
+#   callsmaster isolated  ~/.config/qutebrowser-callsmaster
+#
+# Isolated profiles share the SAME config via symlinks into the default
+# profile (config.py, autoconfig.yml, startpage.html, greasemonkey/) — one
+# source of truth, maintained by setup.sh step 5. A profile you deliberately
+# customized (real file instead of a symlink) is never overwritten.
+#
+# Usage:
+#   qb                    open developer profile (default)
+#   qb <profile>          open that profile (isolated ones get --basedir)
+#   qb <profile> <url>    open profile with URL, e.g. qb luxa github.com
+#   qb --list             list profiles and their state
+#   qb --init             (re)create isolated profile dirs + config links
+#   qb --completion-bash  print bash completion (eval it or add to ~/.bashrc)
+#
+# Notes: unknown bare words are passed through as URLs/search terms
+# (e.g. `qb arch wiki` searches in the developer profile). Isolated
+# profiles can run side-by-side with each other and with developer.
+
+set -euo pipefail
+
+PROFILES=(ritik blank luxa developer callsmaster)
+ISOLATED=(ritik blank luxa callsmaster)
+DEFAULT_PROFILE=developer
+SHARED_DIR="$HOME/.config/qutebrowser"
+QB_BIN="qutebrowser"
+SHARED_FILES=(config.py autoconfig.yml startpage.html)
+
+log() { echo "[qb] $*"; }
+err() { echo "[qb] error: $*" >&2; }
+
+usage() {
+    sed -n '2,/^$/p' "$0" | sed 's/^# \?//'
+}
+
+is_profile() {
+    local _p="$1" _x
+    for _x in "${PROFILES[@]}"; do
+        [[ "$_x" == "$_p" ]] && return 0
+    done
+    return 1
+}
+
+profile_dir() {
+    if [[ "$1" == "$DEFAULT_PROFILE" ]]; then
+        printf '%s' "$SHARED_DIR"
+    else
+        printf '%s' "$SHARED_DIR-$1"
+    fi
+}
+
+# Link one shared path into a profile dir. Never clobbers a real file the
+# user put there deliberately (per-profile customization wins).
+link_shared() {
+    local _src="$1" _dst="$2"
+    if [[ ! -e "$_src" ]]; then
+        err "shared $(basename "$_src") missing — run setup.sh step 5 first"
+        return 1
+    fi
+    if [[ -e "$_dst" && ! -L "$_dst" ]]; then
+        log "keeping customized $_dst (not touching it)"
+        return 0
+    fi
+    ln -sfn "$_src" "$_dst"
+}
+
+ensure_profile() {
+    local _name="$1" _dir
+    _dir="$(profile_dir "$_name")"
+    if [[ "$_name" == "$DEFAULT_PROFILE" ]]; then
+        mkdir -p "$_dir"
+        [[ -f "$_dir/config.py" ]] || err "shared config.py missing in $_dir — run setup.sh step 5"
+        return 0
+    fi
+    mkdir -p "$_dir/config"
+    local _f
+    for _f in "${SHARED_FILES[@]}"; do
+        link_shared "$SHARED_DIR/$_f" "$_dir/config/$_f" || true
+    done
+    if [[ -e "$SHARED_DIR/greasemonkey" ]]; then
+        link_shared "$SHARED_DIR/greasemonkey" "$_dir/config/greasemonkey" || true
+    fi
+}
+
+cmd_init() {
+    local _p
+    for _p in "${ISOLATED[@]}"; do
+        ensure_profile "$_p"
+        log "profile ready: $_p -> $(profile_dir "$_p")"
+    done
+}
+
+cmd_list() {
+    local _p _dir _state
+    for _p in "${PROFILES[@]}"; do
+        _dir="$(profile_dir "$_p")"
+        if [[ "$_p" == "$DEFAULT_PROFILE" ]]; then
+            _state="default profile"
+        elif [[ -d "$_dir" ]]; then
+            _state="isolated, initialized"
+        else
+            _state="isolated, not created (run: qb --init)"
+        fi
+        printf '%-12s %s  [%s]\n' "$_p" "$_dir" "$_state"
+    done
+}
+
+cmd_completion() {
+    cat << 'EOF'
+# qb bash completion — activate with: eval "$(qb --completion-bash)"
+_qb() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    if [[ $COMP_CWORD -eq 1 ]]; then
+        COMPREPLY=($(compgen -W "ritik blank luxa developer callsmaster --help --list --init --completion-bash" -- "$cur"))
+    fi
+}
+complete -F _qb qb
+EOF
+}
+
+# --- flags (exit before launching) -------------------------------------------
+case "${1-}" in
+    --help | -h) usage; exit 0 ;;
+    --list) cmd_list; exit 0 ;;
+    --init) cmd_init; exit 0 ;;
+    --completion-bash) cmd_completion; exit 0 ;;
+esac
+
+# --- profile + passthrough args ----------------------------------------------
+PROFILE="$DEFAULT_PROFILE"
+if [[ $# -gt 0 ]]; then
+    if [[ "$1" == "--" ]]; then
+        shift
+    elif is_profile "$1"; then
+        PROFILE="$1"
+        shift
+    elif [[ "$1" == -* ]]; then
+        err "unknown option: $1 (see: qb --help)"
+        exit 2
+    fi
+    # anything else is a URL/search term for the default profile — pass through
+fi
+
+ensure_profile "$PROFILE"
+
+if ! command -v "$QB_BIN" >/dev/null 2>&1; then
+    err "$QB_BIN not found — run scripts/install.sh"
+    exit 127
+fi
+
+if [[ "$PROFILE" == "$DEFAULT_PROFILE" ]]; then
+    exec "$QB_BIN" "$@"
+else
+    exec "$QB_BIN" --basedir "$(profile_dir "$PROFILE")" "$@"
+fi
