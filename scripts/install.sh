@@ -160,6 +160,17 @@ for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
 done
 mkdir -p "$HOME/.npm-global/bin"
 
+# Ensure cargo bin is in PATH for this session and future shells
+# (`cargo install` defaults to ~/.cargo/bin — e.g. judo)
+export PATH="$HOME/.cargo/bin:$PATH"
+for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+    if [[ -f "$rc" ]] && ! grep -qF '.cargo/bin' "$rc" 2>/dev/null; then
+        echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$rc"
+        log "Added cargo bin to PATH in $rc"
+    fi
+done
+mkdir -p "$HOME/.cargo/bin"
+
 log "Installing Node.js global packages..."
 
 npm install -g \

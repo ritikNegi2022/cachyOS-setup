@@ -48,6 +48,7 @@ done
 # dwm comes from the AUR build, not the repos
 if have_pkg dwm || have_bin dwm; then pass "dwm installed"; else fail "dwm missing (run scripts/dwm-build.sh)"; fi
 if have_pkg pipewire-pulse; then pass "package: pipewire-pulse"; else warn "pipewire-pulse missing (audio may not reach apps)"; fi
+if have_pkg wiremix; then pass "package: wiremix (TUI PipeWire mixer)"; else warn "package missing: wiremix (fix: sudo pacman -S --needed wiremix)"; fi
 
 # --- 3. Dev toolchain --------------------------------------------------------
 section "3. Dev toolchain"
@@ -55,6 +56,14 @@ TOOL_BINS="python3 pip uv ruff pyright node npm tsc rustc cargo clang clangd"
 for b in $TOOL_BINS; do
     if have_bin "$b"; then pass "$b on PATH"; else warn "$b not on PATH (dev tool incomplete)"; fi
 done
+# `cargo install` binaries (e.g. judo) live in ~/.cargo/bin — must be on PATH
+if [[ ":$PATH:" == *":$HOME/.cargo/bin:"* ]] || grep -qF '.cargo/bin' "$HOME/.bashrc" 2>/dev/null || grep -qF '.cargo/bin' "$HOME/.zshrc" 2>/dev/null; then
+    pass "~/.cargo/bin in PATH (shell rc)"
+else
+    warn "~/.cargo/bin not referenced in shell rc (cargo binaries like judo won't resolve)"
+fi
+if have_bin judo; then pass "judo on PATH (cargo install judo)"; else warn "judo not on PATH (fix: cargo install judo + ensure ~/.cargo/bin in PATH)"; fi
+if have_bin wiremix; then pass "wiremix on PATH (TUI PipeWire mixer)"; else warn "wiremix not on PATH (fix: sudo pacman -S --needed wiremix)"; fi
 
 # --- 4. System configs -------------------------------------------------------
 section "4. System configs (/etc/ly, xsessions, acpi)"

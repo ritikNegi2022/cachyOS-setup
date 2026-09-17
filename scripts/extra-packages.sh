@@ -29,7 +29,7 @@ log "Installing additional packages..."
 # extra arguments and break pacman argument parsing under `set -e`.
 "${SUDO[@]}" pacman -S --noconfirm --needed \
     alsa-lib alsa-utils alsa-firmware sof-firmware alsa-ucm-conf \
-    pipewire pipewire-pulse pipewire-alsa wireplumber \
+    pipewire pipewire-pulse pipewire-alsa wireplumber wiremix \
     networkmanager \
     bluez bluez-utils \
     ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols-mono noto-fonts-emoji \
@@ -43,6 +43,27 @@ log "Installing additional packages..."
     exfatprogs ntfs-3g
 
 log "Additional packages installed."
+
+# ---------------------------------------------------------------------------
+# 1b. Cargo binaries (install into ~/.cargo/bin — needs ~/.cargo/bin on PATH,
+# see scripts/install.sh + scripts/bin-copy.sh + configs/ly/dwm-session)
+# ---------------------------------------------------------------------------
+if command -v cargo >/dev/null 2>&1; then
+    export PATH="$HOME/.cargo/bin:$PATH"
+    mkdir -p "$HOME/.cargo/bin"
+    if command -v judo >/dev/null 2>&1; then
+        log "judo already installed ($(command -v judo))"
+    else
+        log "Installing judo via cargo..."
+        if cargo install judo; then
+            log "judo installed to ~/.cargo/bin/judo"
+        else
+            warn "cargo install judo failed — check network / crates.io"
+        fi
+    fi
+else
+    warn "cargo not found — skipping cargo binaries (judo unavailable; re-run scripts/install.sh for rust)"
+fi
 
 # ---------------------------------------------------------------------------
 # 2. Enable system services

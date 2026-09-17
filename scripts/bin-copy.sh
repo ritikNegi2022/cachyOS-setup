@@ -203,9 +203,9 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 3. Ensure PATH includes ~/.bin
+# 3. Ensure PATH includes ~/.bin + ~/.cargo/bin
 # ---------------------------------------------------------------------------
-log "Ensuring ~/.bin is in PATH..."
+log "Ensuring ~/.bin + ~/.cargo/bin are in PATH..."
 
 SHELL_RC=""
 case "$SHELL" in
@@ -230,17 +230,29 @@ if [[ -f "$SHELL_RC" ]]; then
 # === cachyOS-setup PATH ===
 # Add ~/.bin to PATH for custom scripts
 export PATH="$HOME/.bin:$PATH"
+# Add ~/.cargo/bin to PATH for `cargo install` binaries (e.g. judo)
+export PATH="$HOME/.cargo/bin:$PATH"
 EOF
-        log "Added ~/.bin to PATH in $SHELL_RC"
+        log "Added ~/.bin + ~/.cargo/bin to PATH in $SHELL_RC"
+    else
+        # Older installs have the marker but only ~/.bin — append cargo line.
+        if ! grep -qF '.cargo/bin' "$SHELL_RC" 2>/dev/null; then
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$SHELL_RC"
+            log "Added ~/.cargo/bin to PATH in $SHELL_RC"
+        fi
     fi
 fi
 
 # Also check other common RC files
 for rc in "$HOME/.profile" "$HOME/.bash_profile" "$HOME/.zprofile"; do
     if [[ -f "$rc" && ! -L "$rc" ]]; then
-        if ! grep -qF '\$HOME/.bin' "$rc" 2>/dev/null; then
+        if ! grep -qF '$HOME/.bin' "$rc" 2>/dev/null; then
             echo 'export PATH="$HOME/.bin:$PATH"' >> "$rc"
             log "Added ~/.bin to PATH in $rc"
+        fi
+        if ! grep -qF '.cargo/bin' "$rc" 2>/dev/null; then
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$rc"
+            log "Added ~/.cargo/bin to PATH in $rc"
         fi
     fi
 done

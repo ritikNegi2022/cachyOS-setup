@@ -3,8 +3,8 @@
 # Referenced by configs/ly/dwm.desktop (Exec= line), installed to /etc/ly/dwm-session
 # Runs when the user selects "dwm" at the ly login screen.
 
-# Ensure npm global and local bin are in PATH for dwm-spawned helpers (super-clipboard, remind, etc.)
-export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/.bin:/usr/local/bin:$PATH"
+# Ensure npm global, cargo, and local bin are in PATH for dwm-spawned helpers (super-clipboard, remind, judo, etc.)
+export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/.bin:/usr/local/bin:$PATH"
 
 # Touchegg client — exactly one per session. NOTE: match the bare `touchegg`
 # command line, NOT `pgrep -x touchegg` (that also matches the --daemon, so a
