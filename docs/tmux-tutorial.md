@@ -82,8 +82,10 @@ RAM). `prefix+d` before you walk away; `tm work` when you return.
 | Close window (asks first) | `prefix+&` |
 | Pick from list | `prefix+w` |
 
-Windows auto-renumber from 1 when one closes, and each shows its current
-folder name (`~/projects/myapp` shows as `myapp`) until a program renames it.
+Windows auto-renumber from 1 when one closes. Unnamed windows show their
+current folder (`~/projects/myapp` shows as `myapp`); names you set — with
+`prefix+,`, `new-window -n NAME`, or a launcher script — stick, because
+shells/programs are blocked from renaming windows (`allow-rename off`).
 
 ---
 
