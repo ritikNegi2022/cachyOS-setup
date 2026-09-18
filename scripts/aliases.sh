@@ -82,6 +82,21 @@ vol() {
         *)    wpctl get-volume @DEFAULT_AUDIO_SINK@ ;;
     esac
 }
+
+# Full-bleed editors: zero Alacritty window padding while hx/nvim runs,
+# restore it on exit. Restore values must match configs/alacritty.toml.
+# Outside Alacritty the msg calls fail silently and editors run normally.
+__cachy_pad_zero() { alacritty msg config 'window.padding.x=0' 'window.padding.y=0' >/dev/null 2>&1; }
+__cachy_pad_restore() { alacritty msg config 'window.padding.x=8' 'window.padding.y=8' >/dev/null 2>&1; }
+hx() { __cachy_pad_zero; command hx "$@"; __cachy_pad_restore; }
+nvim() { __cachy_pad_zero; command nvim "$@"; __cachy_pad_restore; }
+
+# Fix CachyOS zsh-config bug (/usr/share/cachyos-zsh-config/cachyos-config.zsh):
+# it defines alias cleanup="sudo pacman -Rsn $(pacman -Qtdq)" with double
+# quotes, so pacman runs at every shell startup (slow + prints DB errors
+# during init, tripping Powerlevel10k instant-prompt warnings) and bakes in a
+# stale orphan list. Single quotes defer the query to invocation time.
+alias cleanup='sudo pacman -Rsn $(pacman -Qtdq)'
 ALIASES
 
     log "Added aliases to $RC_PATH"

@@ -1,0 +1,207 @@
+# Web dev (JS/TS Next.js/React/Angular/Expo + Tailwind) + Python + Rust
+# Formatters: prettier, ruff format, rustfmt, clang-format
+# Linters/diagnostics: eslint + tailwind + tsc (via typescript-language-server),
+#   ruff + pyright, rust-analyzer + clippy — all diagnostics show automatically
+#   (idle-timeout = 250ms in config.toml) and files auto-format on save.
+# Line length: formatters/linters are NOT width-based — prettier uses a huge
+#   print-width and ruff a huge line-length (+ E501 ignored), so code is never
+#   wrapped or flagged just for being long.
+# Default indent 2 (JS/TS/JSX/TSX/HTML/CSS/JSON/YAML/TOML/Markdown), 4 for C/C++/Python/Rust/Lua.
+#
+# Binaries needed on PATH (see scripts/install.sh):
+#   pacman: typescript-language-server tailwindcss-language-server
+#           eslint-language-server eslint_d stylua rust-analyzer pyright ruff
+#   npm -g: prettier eslint vscode-langservers-extracted emmet-ls @tailwindcss/language-server
+# User-space fallback (no sudo): npm -g @tailwindcss/language-server eslint_d
+#   @johnnymorganz/stylua-bin — binaries land in ~/.npm-global/bin.
+
+# ---------------------------------------------------------------------------
+# Language servers
+# ---------------------------------------------------------------------------
+
+[language-server.typescript-language-server]
+command = "typescript-language-server"
+args = ["--stdio"]
+config = { typescript = { inlayHints = { includeInlayParameterNameHints = "none" } } }
+
+[language-server.tailwindcss-language-server]
+command = "tailwindcss-language-server"
+args = ["--stdio"]
+
+# ESLint flat config (eslint v9+): server needs useFlatConfig so it finds
+# eslint.config.* in Next.js / Vite / Expo projects instead of erroring out.
+[language-server.eslint]
+command = "vscode-eslint-language-server"
+args = ["--stdio"]
+config = { validate = "on", experimental = { useFlatConfig = true }, codeActionOnSave = { enable = true, mode = "all" } }
+
+[language-server.emmet-ls]
+command = "emmet-ls"
+args = ["--stdio"]
+
+[language-server.vscode-html]
+command = "vscode-html-language-server"
+args = ["--stdio"]
+
+[language-server.vscode-css]
+command = "vscode-css-language-server"
+args = ["--stdio"]
+
+[language-server.vscode-json]
+command = "vscode-json-language-server"
+args = ["--stdio"]
+
+# Rust: clippy on save = auto-lint for Rust (warnings appear as diagnostics).
+[language-server.rust-analyzer]
+command = "rust-analyzer"
+config = { check = { command = "clippy" } }
+
+# ---------------------------------------------------------------------------
+# Web: JavaScript / TypeScript / JSX / TSX
+# TS server handles types/completions (except formatting — prettier wins),
+# tailwind gives class completions + warnings, eslint gives lint diagnostics.
+# ---------------------------------------------------------------------------
+
+[[language]]
+name = "javascript"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "prettier", args = ["--single-quote", "--trailing-comma", "all", "--print-width", "1000", "--stdin-filepath", "file.js"] }
+language-servers = [{ name = "typescript-language-server", except-features = ["format"] }, "tailwindcss-language-server", "eslint"]
+roots = ["package.json", "tsconfig.json", "jsconfig.json", ".git"]
+
+[[language]]
+name = "typescript"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "prettier", args = ["--single-quote", "--trailing-comma", "all", "--print-width", "1000", "--stdin-filepath", "file.ts"] }
+language-servers = [{ name = "typescript-language-server", except-features = ["format"] }, "tailwindcss-language-server", "eslint"]
+roots = ["package.json", "tsconfig.json", ".git"]
+
+[[language]]
+name = "tsx"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "prettier", args = ["--single-quote", "--trailing-comma", "all", "--print-width", "1000", "--stdin-filepath", "file.tsx"] }
+language-servers = [{ name = "typescript-language-server", except-features = ["format"] }, "tailwindcss-language-server", "eslint"]
+roots = ["package.json", "tsconfig.json", ".git"]
+
+[language.auto-pairs]
+"(" = ")"
+"{" = "}"
+"[" = "]"
+'"' = '"'
+"`" = "`"
+"<" = ">"
+
+[[language]]
+name = "jsx"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "prettier", args = ["--single-quote", "--trailing-comma", "all", "--print-width", "1000", "--stdin-filepath", "file.jsx"] }
+language-servers = [{ name = "typescript-language-server", except-features = ["format"] }, "tailwindcss-language-server", "eslint"]
+roots = ["package.json", "jsconfig.json", ".git"]
+
+[language.auto-pairs]
+"(" = ")"
+"{" = "}"
+"[" = "]"
+'"' = '"'
+"`" = "`"
+"<" = ">"
+
+# ---------------------------------------------------------------------------
+# Web: HTML / CSS / JSON (emmet for rapid markup, tailwind classes in CSS/HTML)
+# ---------------------------------------------------------------------------
+
+[[language]]
+name = "html"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "prettier", args = ["--print-width", "1000", "--stdin-filepath", "file.html"] }
+language-servers = ["vscode-html", "emmet-ls", "tailwindcss-language-server", "eslint"]
+
+[language.auto-pairs]
+"(" = ")"
+"{" = "}"
+"[" = "]"
+'"' = '"'
+"`" = "`"
+"<" = ">"
+
+[[language]]
+name = "css"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "prettier", args = ["--print-width", "1000", "--stdin-filepath", "file.css"] }
+language-servers = ["vscode-css", "tailwindcss-language-server", "eslint"]
+
+[[language]]
+name = "json"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "prettier", args = ["--print-width", "1000", "--stdin-filepath", "file.json"] }
+language-servers = ["vscode-json", "eslint"]
+
+[[language]]
+name = "jsonc"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "prettier", args = ["--print-width", "1000", "--stdin-filepath", "file.jsonc"] }
+language-servers = ["vscode-json", "eslint"]
+
+# ---------------------------------------------------------------------------
+# The rest (unchanged behavior, kept in sync with Zed + nvim)
+# ---------------------------------------------------------------------------
+
+[[language]]
+name = "yaml"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "prettier", args = ["--print-width", "1000", "--stdin-filepath", "file.yaml"] }
+
+[[language]]
+name = "toml"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "markdown"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "prettier", args = ["--print-width", "1000", "--stdin-filepath", "file.md"] }
+soft-wrap.enable = true
+
+[[language]]
+name = "python"
+auto-format = true
+indent = { tab-width = 4, unit = "    " }
+formatter = { command = "ruff", args = ["format", "--line-length", "1000", "-"] }
+language-servers = ["pyright", "ruff"]
+
+[[language]]
+name = "rust"
+auto-format = true
+indent = { tab-width = 4, unit = "    " }
+formatter = { command = "rustfmt", args = ["--edition", "2021"] }
+language-servers = ["rust-analyzer"]
+
+[[language]]
+name = "lua"
+auto-format = true
+indent = { tab-width = 4, unit = "    " }
+formatter = { command = "stylua", args = ["--column-width", "100", "-"] }
+
+[[language]]
+name = "c"
+auto-format = true
+indent = { tab-width = 4, unit = "    " }
+formatter = { command = "clang-format", args = ["--style={ColumnLimit: 100, IndentWidth: 4, UseTab: Never}"] }
+language-servers = ["clangd"]
+
+[[language]]
+name = "cpp"
+auto-format = true
+indent = { tab-width = 4, unit = "    " }
+formatter = { command = "clang-format", args = ["--style={ColumnLimit: 100, IndentWidth: 4, UseTab: Never, BreakBeforeBraces: Attach, AllowShortFunctionsOnASingleLine: Inline}"] }
+language-servers = ["clangd"]

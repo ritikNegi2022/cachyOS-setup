@@ -70,11 +70,20 @@ bash "$THIS_DIR/scripts/dwm-config.sh"
 
 log "=== Step 5: Install user configs ==="
 mkdir -p "$HOME/.config/alacritty" "$HOME/.config/tmux" "$HOME/.config/nvim" "$HOME/.config/lf"
-mkdir -p "$HOME/.config/touchegg" "$HOME/.config/zed" "$HOME/.config/dunst"
+mkdir -p "$HOME/.config/touchegg" "$HOME/.config/zed" "$HOME/.config/dunst" "$HOME/.config/helix"
 
 cp "$THIS_DIR/configs/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
 cp "$THIS_DIR/configs/tmux.conf" "$HOME/.config/tmux/tmux.conf"
 cp "$THIS_DIR/configs/nvim/init.lua" "$HOME/.config/nvim/init.lua"
+cp "$THIS_DIR/configs/helix/config.toml" "$HOME/.config/helix/config.toml"
+cp "$THIS_DIR/configs/helix/languages.toml" "$HOME/.config/helix/languages.toml"
+# Helix themes (e.g. ayu_evolve_zen used by the helix-zen toggle)
+mkdir -p "$HOME/.config/helix/themes"
+for _ht in "$THIS_DIR/configs/helix/themes/"*.toml; do
+    [[ -f "$_ht" ]] || continue
+    cp "$_ht" "$HOME/.config/helix/themes/$(basename "$_ht")"
+done
+unset _ht
 cp "$THIS_DIR/configs/lf/lfrc" "$HOME/.config/lf/lfrc"
 cp "$THIS_DIR/configs/lf/preview.sh" "$HOME/.config/lf/preview.sh"
 chmod +x "$HOME/.config/lf/preview.sh"
@@ -287,7 +296,9 @@ echo "    Tags 1-10 -> free placement (no auto-tag for browsers/Zed, was tag 9/1
 echo ""
 echo "  LANGUAGE TOOLS INSTALLED:"
 echo "    Python: python + pip + uv + ruff + pytest + pyright"
-echo "    Node:   node + npm + typescript + tsx + prettier + eslint"
+echo "    Node:   node + npm + typescript + tsx + prettier + eslint + eslint_d"
+echo "    Web LSP: typescript-language-server + tailwindcss-language-server + eslint-language-server"
+echo "            + vscode-langservers-extracted (html/css/json/eslint) + emmet-ls"
 echo "    Rust:   rustc + cargo + clippy + rustfmt"
 echo "    C/C++:  clang + clangd + clang-format (via clang package)"
 echo ""

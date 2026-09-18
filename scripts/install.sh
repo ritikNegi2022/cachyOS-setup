@@ -78,6 +78,7 @@ log "Installing official repo packages..."
     maim slop xdg-utils libnotify slock bc \
     android-tools android-file-transfer \
     clang rust-analyzer typescript-language-server lua-language-server \
+    tailwindcss-language-server eslint-language-server eslint_d stylua \
     neovim-lspconfig \
     nodejs npm \
     rust uv watchexec \
@@ -174,7 +175,9 @@ mkdir -p "$HOME/.cargo/bin"
 log "Installing Node.js global packages..."
 
 npm install -g \
-    typescript tsx prettier eslint \
+    typescript tsx prettier eslint eslint_d \
+    vscode-langservers-extracted emmet-ls \
+    @tailwindcss/language-server @johnnymorganz/stylua-bin tree-sitter-cli \
     2>/dev/null || warn "Some npm packages may have failed."
 
 log "Node.js global packages installed."

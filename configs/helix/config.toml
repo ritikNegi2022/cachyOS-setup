@@ -1,0 +1,48 @@
+# Matches Zed setup: One Black / One Dark, relative numbers, minimal chrome
+theme = "ayu_evolve"
+
+[editor]
+line-number = "relative"
+cursorline = true
+color-modes = true
+auto-format = true
+idle-timeout = 250
+scrolloff = 8
+true-color = true
+bufferline = "never"
+cursor-shape.normal = "bar"
+cursor-shape.insert = "bar"
+cursor-shape.select = "underline"
+whitespace.render.tab = "all"
+whitespace.characters.tab = "→"
+indent-guides.render = false
+soft-wrap.enable = false
+search.smart-case = true
+statusline.left = ["mode", "spinner", "file-name"]
+statusline.center = []
+statusline.right = ["diagnostics", "selections", "position", "file-encoding"]
+
+# Automatic suggestions: pop up after 1 char, show preview as you type
+auto-completion = true
+preview-completion-insert = true
+completion-trigger-len = 1
+completion-replace = true
+path-completion = true
+
+# Autoclose brackets and quotes (defaults are (){}[]''""`` — see also
+# per-language [language.auto-pairs] in languages.toml, e.g. <> for HTML/JSX)
+auto-pairs = true
+
+# Diagnostics update fast (pairs with idle-timeout above) for auto-lint feel
+inline-diagnostics.cursor-line = "hint"
+
+lsp.display-messages = true
+lsp.display-inlay-hints = false
+lsp.snippets = true
+
+[editor.file-picker]
+hidden = false
+git-ignore = true
+
+[keys.normal]
+"space" = { w = ":w", q = ":q", e = ":open %sh{dirname %val{buffile}}", f = ":format", z = ":run-shell-command helix-zen" }

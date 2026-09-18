@@ -1,0 +1,62 @@
+#!/bin/bash
+# Toggle Helix zen mode: hide the statusline for a text-only view.
+# Helix live-reloads config.toml, so the change applies instantly, no restart.
+# Bound to <space>z in configs/helix/config.toml. Usage: helix-zen [on|off|toggle]
+# Part of cachyOS-setup — installed to ~/.bin by scripts/bin-copy.sh
+set -euo pipefail
+
+CFG="${HELIX_CFG:-$HOME/.config/helix/config.toml}"
+STATE="${XDG_CACHE_HOME:-$HOME/.cache}/helix-zen-statusline"
+STATE_THEME="${XDG_CACHE_HOME:-$HOME/.cache}/helix-zen-theme"
+ZEN_THEME="ayu_evolve_zen"
+MODE="${1:-toggle}"
+
+zen_on() { [[ -f "$STATE" ]]; }
+
+# Helix does NOT watch config.toml — tell every running hx to reload it.
+reload_helix() {
+    pkill -USR1 -x hx 2>/dev/null || pkill -USR1 -x helix 2>/dev/null || true
+}
+
+enable() {
+    if zen_on; then echo "helix zen: already on"; return 0; fi
+    grep '^statusline\.' "$CFG" > "$STATE"
+    grep '^theme =' "$CFG" > "$STATE_THEME" || true
+    sed -i -E 's/^(statusline\.(left|center|right)) = .*/\1 = []/' "$CFG"
+    sed -i -E "s/^theme = \".*\"/theme = \"$ZEN_THEME\"/" "$CFG"
+    reload_helix
+    echo "helix zen: on (statusline hidden)"
+}
+
+disable() {
+    if ! zen_on; then echo "helix zen: already off"; return 0; fi
+    python3 - "$CFG" "$STATE" <<'EOF'
+import sys
+cfg_path, state_path = sys.argv[1], sys.argv[2]
+saved = open(state_path).read().splitlines(keepends=True)
+text = open(cfg_path).read().splitlines(keepends=True)
+out, i = [], 0
+for line in text:
+    if line.startswith("statusline.") and i < len(saved):
+        out.append(saved[i])
+        i += 1
+    else:
+        out.append(line)
+open(cfg_path, "w").write("".join(out))
+EOF
+    rm -f "$STATE"
+    if [[ -s "$STATE_THEME" ]]; then
+        saved_theme="$(cat "$STATE_THEME")"
+        sed -i -E "s/^theme = \".*\"/$saved_theme/" "$CFG"
+        rm -f "$STATE_THEME"
+    fi
+    reload_helix
+    echo "helix zen: off (statusline restored)"
+}
+
+case "$MODE" in
+    on) enable ;;
+    off) disable ;;
+    toggle) if zen_on; then disable; else enable; fi ;;
+    *) echo "usage: helix-zen [on|off|toggle]" >&2; exit 1 ;;
+esac

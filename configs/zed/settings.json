@@ -194,7 +194,7 @@
       "formatter": {
         "external": {
           "command": "prettier",
-          "arguments": ["--single-quote", "--trailing-comma", "all"]
+          "arguments": ["--single-quote", "--trailing-comma", "all", "--print-width", "1000"]
         }
       }
     },
@@ -204,18 +204,27 @@
       "formatter": {
         "external": {
           "command": "prettier",
-          "arguments": ["--single-quote", "--trailing-comma", "all"]
+          "arguments": ["--single-quote", "--trailing-comma", "all", "--print-width", "1000"]
         }
       }
     },
-    "TSX": { "language_servers": ["vtsls"], "tab_size": 2 },
+    "TSX": {
+      "language_servers": ["vtsls"],
+      "tab_size": 2,
+      "formatter": {
+        "external": {
+          "command": "prettier",
+          "arguments": ["--single-quote", "--trailing-comma", "all", "--print-width", "1000"]
+        }
+      }
+    },
     "Python": {
       "language_servers": ["pyright", "ruff"],
       "tab_size": 4,
       "formatter": {
         "external": {
           "command": "ruff",
-          "arguments": ["format", "--line-length", "100", "-"]
+          "arguments": ["format", "--line-length", "1000", "-"]
         }
       }
     },

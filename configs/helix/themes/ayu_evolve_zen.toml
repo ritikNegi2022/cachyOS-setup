@@ -1,0 +1,14 @@
+# Zen companion to ayu_evolve: melts the statusline into the editor background
+# for a zero-chrome view. Used by `helix-zen` (bound to <space>z), which swaps
+# `theme =` in config.toml alongside emptying the statusline sections.
+# Popups/menus (completion, prompts) keep their normal styling — only the
+# bottom bar goes invisible. The prompt line (`:`/`/`) still renders readable
+# text in that row while you type.
+inherits = "ayu_evolve"
+
+"ui.statusline" = { fg = "background", bg = "background" }
+"ui.statusline.inactive" = { fg = "background", bg = "background" }
+"ui.statusline.normal" = { fg = "background", bg = "background" }
+"ui.statusline.insert" = { fg = "background", bg = "background" }
+"ui.statusline.select" = { fg = "background", bg = "background" }
+"ui.statusline.separator" = { fg = "background", bg = "background" }
