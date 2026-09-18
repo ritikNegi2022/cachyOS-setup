@@ -220,6 +220,14 @@ if [[ -f "$THIS_DIR/docs/after-setup.md" ]]; then
     "${SUDO[@]}" cp "$THIS_DIR/docs/after-setup.md" /usr/share/doc/cachyOS-setup/after-setup.md
     cp "$THIS_DIR/docs/after-setup.md" "$HOME/after-setup.md" 2>/dev/null || true
 fi
+# tmux tutorial (beginner guide + keybindings for this setup's tmux.conf)
+if [[ -f "$THIS_DIR/docs/tmux-tutorial.md" ]]; then
+    cp "$THIS_DIR/docs/tmux-tutorial.md" "$HOME/Documents/tmux-tutorial.md"
+    cp "$THIS_DIR/docs/tmux-tutorial.md" "$HOME/.local/share/cachyOS-setup/tmux-tutorial.md"
+    "${SUDO[@]}" mkdir -p /usr/share/doc/cachyOS-setup
+    "${SUDO[@]}" cp "$THIS_DIR/docs/tmux-tutorial.md" /usr/share/doc/cachyOS-setup/tmux-tutorial.md
+    cp "$THIS_DIR/docs/tmux-tutorial.md" "$HOME/tmux-tutorial.md" 2>/dev/null || true
+fi
 
 # Note: ly config + dwm session go to /etc/ly/ and /usr/share/xsessions/
 # (handled by dwm-config.sh as root). pgAdmin ships no repo config on purpose —
