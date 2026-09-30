@@ -62,7 +62,7 @@ if command -v cargo >/dev/null 2>&1; then
         fi
     fi
 else
-    warn "cargo not found — skipping cargo binaries (judo unavailable; re-run scripts/install.sh for rust)"
+    warn "cargo not found — skipping cargo binaries (judo unavailable; re-run scripts/install.sh for rustup stable)"
 fi
 
 # ---------------------------------------------------------------------------

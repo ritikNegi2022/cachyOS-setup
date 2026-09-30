@@ -228,7 +228,7 @@ screen-lock --test  # dry run: shows what would be locked, locks nothing
 | `lua-language-server` | Lua LSP `lua_ls` |
 | `neovim-lspconfig` | LSP configs for nvim |
 | `nodejs` + `npm` | JS runtime + `tsc`/`tsx`/`prettier`/`eslint`/`freebuff` |
-| `rust` (`rustc` `cargo`) | Rust toolchain |
+| `rustup` (+ `rustup default stable`) | Rust toolchain manager → `rustc`/`cargo`/`clippy`/`rustfmt` |
 | `uv` | Python package manager (replaces `pip` for speed) |
 | `watchexec` | file watcher |
 | `python` `python-pip` `python-ruff` `python-pytest` `python-pytest-cov` `pyright` | Python + lint + test + type check |
@@ -240,6 +240,8 @@ screen-lock --test  # dry run: shows what would be locked, locks nothing
 | `brave-bin` | Brave browser `Super+Shift+b` → tag free (was `Super+b`) |
 | `zen-browser-bin` | Zen browser `Super+Alt+b` (physical `Super+Ctrl+b` while the `Alt↔Ctrl` swap is on; `Super+Ctrl+b` alias covers swap-off) |
 | `pgadmin4-desktop` | pgAdmin 4 desktop (flake-allow fail) |
+| `mongodb-bin` + `mongosh-bin` | MongoDB server (`mongodb.service`) + shell (chrpath auto-dep) |
+| `pince-bin` | PINCE GDB frontend (`PINCE`) |
 | `dwm` | window manager built with `configs/dwm/config.h` (custom `shiftview` `togglefullscreen` `togglegroup` `//` icons, `showbar=0`) |
 
 ### Audio / Network / Bluetooth / Fonts (`extra-packages.sh:30`)

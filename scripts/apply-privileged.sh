@@ -8,6 +8,19 @@ echo "==> Installing natural scrolling Xorg config"
 "${SUDO[@]}" cp "$REPO_ROOT/configs/xorg/30-natural-scroll.conf" /etc/X11/xorg.conf.d/30-natural-scroll.conf
 echo "    -> /etc/X11/xorg.conf.d/30-natural-scroll.conf"
 
+echo "==> Disabling automatic screen blanking (screen never sleeps)"
+if [[ -f "$REPO_ROOT/configs/xorg/10-no-blanking.conf" ]]; then
+    "${SUDO[@]}" cp "$REPO_ROOT/configs/xorg/10-no-blanking.conf" /etc/X11/xorg.conf.d/10-no-blanking.conf
+    echo "    -> /etc/X11/xorg.conf.d/10-no-blanking.conf (BlankTime/DPMS off, next X start)"
+fi
+"${SUDO[@]}" pacman -S --noconfirm --needed xorg-xset 2>&1 | tail -n 2 || true
+if command -v xset >/dev/null 2>&1 && [[ -n "${DISPLAY:-}" ]]; then
+    xset s off -dpms 2>/dev/null || true
+    xset s noblank 2>/dev/null || true
+    echo "    -> blanking disabled live via xset (only manual Super+Shift+X / power button locks now)"
+    xset q 2>/dev/null | grep -E "DPMS|Screen Saver" | head -n 5 || true
+fi
+
 echo "==> Updating dwm session (natural scroll live + PATH + sync keyswap)"
 "${SUDO[@]}" cp "$REPO_ROOT/configs/ly/dwm-session" /etc/ly/dwm-session
 $SUDO chmod 755 /etc/ly/dwm-session

@@ -93,6 +93,13 @@ chmod +x "$HOME/.config/lf/preview.sh"
 cp "$THIS_DIR/configs/touchegg.conf" "$HOME/.config/touchegg/touchegg.conf"
 # dunst monochrome theme (without it popups use default blue/red urgency colors)
 cp "$THIS_DIR/configs/dunst/dunstrc" "$HOME/.config/dunst/dunstrc"
+# judo (sqlite TUI client, cargo install judo) — connection + theme.
+# Rewrite the vendored absolute home to the current user on install.
+if [[ -f "$THIS_DIR/configs/judo/judo.toml" ]]; then
+    mkdir -p "$HOME/.config/judo"
+    sed "s|/home/blank|$HOME|g" "$THIS_DIR/configs/judo/judo.toml" > "$HOME/.config/judo/judo.toml"
+    log "Installed judo config (~/.config/judo/judo.toml)"
+fi
 # Super+Enter live fallback helper (until dwm rebuild)
 mkdir -p "$HOME/.local/bin"
 if [[ -f "$THIS_DIR/configs/dwm/super-enter-live.py" ]]; then
@@ -307,7 +314,7 @@ echo "    Python: python + pip + uv + ruff + pytest + pyright"
 echo "    Node:   node + npm + typescript + tsx + prettier + eslint + eslint_d"
 echo "    Web LSP: typescript-language-server + tailwindcss-language-server + eslint-language-server"
 echo "            + vscode-langservers-extracted (html/css/json/eslint) + emmet-ls"
-echo "    Rust:   rustc + cargo + clippy + rustfmt"
+echo "    Rust:   rustup + stable toolchain (rustc + cargo + clippy + rustfmt)"
 echo "    C/C++:  clang + clangd + clang-format (via clang package)"
 echo ""
 echo "  POSTGRESQL RUNNER:"

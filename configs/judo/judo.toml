@@ -1,0 +1,10 @@
+default = "dojo"
+
+[[dbs]]
+name = "dojo"
+connection_str = "sqlite:/home/blank/.local/share/judo/judo.db"
+
+[colours]
+background = "#002626"
+foreground = "#FCF1D5"
+highlight = "#FFA69E"

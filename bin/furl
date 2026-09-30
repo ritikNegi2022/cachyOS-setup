@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# furl - print file:// URL of a file and copy it to clipboard
+# usage: furl ./sample.png  |  furl /abs/path/img.jpg
+set -e
+
+if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  echo "usage: furl <file>" >&2
+  exit ${1:+-0}
+  exit 1
+fi
+
+f="$1"
+[ -e "$f" ] || { echo "furl: file not found: $f" >&2; exit 1; }
+
+abs="$(realpath "$f")"
+url="file://$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$abs")"
+
+if command -v xclip >/dev/null 2>&1; then
+  printf '%s' "$url" | xclip -selection clipboard
+elif command -v wl-copy >/dev/null 2>&1; then
+  printf '%s' "$url" | wl-copy
+elif command -v xsel >/dev/null 2>&1; then
+  printf '%s' "$url" | xsel --clipboard --input
+else
+  echo "furl: no clipboard tool (xclip/wl-copy/xsel) found" >&2
+fi
+
+printf '%s\n' "$url"

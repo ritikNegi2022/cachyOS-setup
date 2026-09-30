@@ -17,6 +17,15 @@ pgrep -f 'touchegg$' >/dev/null 2>&1 || { nohup touchegg >/tmp/touchegg.log 2>&1
 # Pure black background — no wallpaper, no compositor needed
 xsetroot -solid "#000000"
 
+# Never auto-blank / auto-sleep the screen: Xorg defaults blank after ~10 min
+# idle (screensaver + DPMS). Only manual lock (Super+Shift+X / power button)
+# may blank it. Xorg conf (10-no-blanking.conf) covers next X start; xset
+# enforces it live every login in case the conf is missing/stale.
+if command -v xset >/dev/null 2>&1; then
+    xset s off -dpms 2>/dev/null || true
+    xset s noblank 2>/dev/null || true
+fi
+
 # Session key remaps: ESC<->CapsLock, Alt<->Ctrl (delete this line to revert)
 # Run synchronously (no &) so remaps are applied before dwm grabs keys
 if [ -x /etc/ly/keyswap.sh ]; then

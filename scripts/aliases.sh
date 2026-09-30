@@ -101,3 +101,80 @@ ALIASES
 
     log "Added aliases to $RC_PATH"
 done
+
+# ---------------------------------------------------------------------------
+# Zsh extras (CachyOS default framework + project-jump widget)
+# ---------------------------------------------------------------------------
+# Live ~/.zshrc (2026-09-26) has, above the aliases block:
+#   - Powerlevel10k instant prompt (must stay near the top of the file)
+#   - `source /usr/share/cachyos-zsh-config/cachyos-config.zsh`
+#   - `project_or_command` widget: bare <Enter> on a project name
+#     (~/projects/<name>) jumps to `cd ~/projects/<name>`
+#   - `[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh`
+# All are idempotent — safe to re-run.
+ZSH_RC="$HOME/.zshrc"
+if [[ -f "$ZSH_RC" ]]; then
+    if ! grep -qF 'p10k-instant-prompt' "$ZSH_RC" 2>/dev/null; then
+        _tmp="$(mktemp)"
+        cat > "$_tmp" << 'P10K_TOP'
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+P10K_TOP
+        cat "$ZSH_RC" >> "$_tmp"
+        cat "$_tmp" > "$ZSH_RC"
+        rm -f "$_tmp"
+        unset _tmp
+        log "Prepended p10k instant prompt to .zshrc"
+    fi
+    if ! grep -qF 'cachyos-zsh-config/cachyos-config.zsh' "$ZSH_RC" 2>/dev/null; then
+        # Keep it near the top (after the instant-prompt block) when possible.
+        if grep -qF 'p10k-instant-prompt' "$ZSH_RC" 2>/dev/null; then
+            _tmp="$(mktemp)"
+            awk '
+                { print }
+                /p10k-instant-prompt.*\.zsh"/ && !done { print ""; print "source /usr/share/cachyos-zsh-config/cachyos-config.zsh"; done=1 }
+            ' "$ZSH_RC" > "$_tmp" && cat "$_tmp" > "$ZSH_RC"
+            rm -f "$_tmp"
+            unset _tmp
+        else
+            echo -e '\nsource /usr/share/cachyos-zsh-config/cachyos-config.zsh' >> "$ZSH_RC"
+        fi
+        log "Added cachyos-config source to .zshrc"
+    fi
+    if ! grep -qF 'project_or_command' "$ZSH_RC" 2>/dev/null; then
+        cat >> "$ZSH_RC" << 'ZSH_WIDGET'
+
+# === cachyOS-setup project-jump ===
+# Bare <Enter> on a ~/projects/<name> jumps to it (only when the buffer is a
+# single word that is NOT an existing command but IS a project dir).
+project_or_command(){
+  if [[ "$BUFFER" != *[[:space:]]* ]]; then
+    local command="$BUFFER"
+    local project="$HOME/projects/$command"
+    if ! (( $+commands[$command] )) && [[ -d "$project" ]]; then
+      BUFFER="cd $project"
+      zle .accept-line
+    fi
+  fi
+  zle .accept-line
+}
+zle -N project_or_command
+bindkey '^M' project_or_command
+ZSH_WIDGET
+        log "Added project_or_command widget to .zshrc"
+    fi
+    if ! grep -qF '.p10k.zsh' "$ZSH_RC" 2>/dev/null; then
+        cat >> "$ZSH_RC" << 'P10K_SRC'
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+P10K_SRC
+        log "Added p10k source to .zshrc"
+    fi
+else
+    log "~/.zshrc not found — skipping zsh extras (bash-only system?)"
+fi
+unset ZSH_RC

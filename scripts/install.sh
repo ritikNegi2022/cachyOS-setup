@@ -64,7 +64,7 @@ log "Installing official repo packages..."
 
 "${SUDO[@]}" pacman -S --noconfirm --needed \
     xorg-server xorg-xinit xorg-xprop xorg-xauth \
-    xorg-xsetroot xorg-xrandr xorg-xinput xorg-xmodmap \
+    xorg-xsetroot xorg-xrandr xorg-xinput xorg-xmodmap xorg-xset \
     xdotool wmctrl libinput touchegg \
     xclip xterm file \
     alacritty tmux neovim lf lazygit \
@@ -81,7 +81,7 @@ log "Installing official repo packages..."
     tailwindcss-language-server eslint-language-server eslint_d stylua \
     neovim-lspconfig \
     nodejs npm \
-    rust uv watchexec \
+    rustup uv watchexec \
     python python-pip python-ruff \
     python-pytest python-pytest-cov \
     pyright
@@ -118,7 +118,49 @@ if ! yay -S --noconfirm --needed simple-mtpfs; then
     warn "simple-mtpfs AUR build failed — Android USB mounting unavailable (MTP fallback: android-file-transfer GUI)"
 fi
 
+# pince-bin (PINCE reverse-engineering frontend for GDB) — best-effort, big
+# GUI package; must NOT abort setup on failure. Deps (fuse2, hicolor,
+# polkit) resolve automatically — no game packages pulled in.
+if ! yay -S --noconfirm --needed pince-bin; then
+    warn "pince-bin AUR install failed — rerun 'yay -S pince-bin' later"
+fi
+
+# MongoDB (document DB) + mongosh (shell) — both AUR *-bin packages.
+# chrpath is pulled automatically as a mongodb-bin dependency, so it is not
+# listed explicitly. Service is enabled here; data dir init happens on first
+# start by the package's tmpfiles/service units. Best-effort like pgadmin.
+if ! yay -S --noconfirm --needed mongodb-bin mongosh-bin; then
+    warn "mongodb-bin/mongosh-bin AUR install failed — rerun 'yay -S mongodb-bin mongosh-bin' later"
+else
+    "${SUDO[@]}" systemctl enable mongodb.service 2>/dev/null \
+        && log "mongodb.service enabled (start: sudo systemctl start mongodb)" \
+        || warn "mongodb installed but service enable failed — run: sudo systemctl enable mongodb"
+fi
+
 log "AUR packages installed."
+
+# ---------------------------------------------------------------------------
+# 3b. Rust toolchain via rustup (replaces pacman `rust` package)
+# ---------------------------------------------------------------------------
+# `rustup` (official repo) manages toolchains in ~/.rustup + shims in
+# ~/.cargo/bin. Install stable once and set it default so rustc/cargo/
+# clippy/rustfmt work without the distro `rust` package.
+if command -v rustup >/dev/null 2>&1; then
+    export PATH="$HOME/.cargo/bin:$PATH"
+    if rustup toolchain list 2>/dev/null | grep -q "^stable"; then
+        log "rustup stable toolchain already installed"
+    else
+        log "Installing Rust stable via rustup..."
+        rustup toolchain install stable --no-self-update 2>/dev/null \
+            || rustup toolchain install stable \
+            || warn "rustup toolchain install failed — rerun 'rustup toolchain install stable'"
+    fi
+    rustup default stable 2>/dev/null \
+        && log "rustup default -> stable ($(rustc --version 2>/dev/null || echo stable))" \
+        || warn "rustup default failed — rerun 'rustup default stable'"
+else
+    warn "rustup not found — Rust toolchain unavailable (re-run scripts/install.sh)"
+fi
 
 # ---------------------------------------------------------------------------
 # 4. Python extras via pip (repo packages cover ruff/pytest; pip adds mypy)

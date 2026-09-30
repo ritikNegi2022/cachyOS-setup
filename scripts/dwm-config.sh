@@ -81,6 +81,7 @@ log "Enabling ly as display manager (ly@tty1)..."
 
 # ---------------------------------------------------------------------------
 # 3. Natural (inverted) scrolling — touchpad + mouse wheel (libinput)
+# 3b. Never auto-blank the screen (Xorg defaults blank after ~10 min idle)
 # ---------------------------------------------------------------------------
 log "Installing natural (inverted) scrolling Xorg config..."
 "${SUDO[@]}" mkdir -p /etc/X11/xorg.conf.d
@@ -101,6 +102,24 @@ if [[ -f "$REPO_ROOT/configs/xorg/30-natural-scroll.conf" ]]; then
     fi
 else
     warn "configs/xorg/30-natural-scroll.conf not found — skip natural scroll"
+fi
+
+log "Installing no-blanking Xorg config (screen never sleeps)..."
+"${SUDO[@]}" mkdir -p /etc/X11/xorg.conf.d
+if [[ -f "$REPO_ROOT/configs/xorg/10-no-blanking.conf" ]]; then
+    "${SUDO[@]}" cp "$REPO_ROOT/configs/xorg/10-no-blanking.conf" /etc/X11/xorg.conf.d/10-no-blanking.conf
+    log "Installed /etc/X11/xorg.conf.d/10-no-blanking.conf (BlankTime/DPMS off, next X start)"
+else
+    warn "configs/xorg/10-no-blanking.conf not found — skip"
+fi
+# xset enforces it live this session (dwm-session also runs it every login).
+"${SUDO[@]}" pacman -S --noconfirm --needed xorg-xset 2>&1 | tail -n 2 || true
+if command -v xset >/dev/null 2>&1 && [[ -n "${DISPLAY:-}" ]]; then
+    xset s off -dpms 2>/dev/null || true
+    xset s noblank 2>/dev/null || true
+    log "Screen blanking disabled live via xset (xset q: DPMS disabled, screensaver off)"
+else
+    log "No-blanking applies at next graphical login (no DISPLAY now)"
 fi
 
 # ---------------------------------------------------------------------------

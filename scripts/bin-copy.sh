@@ -2,7 +2,8 @@
 # Copy binaries to ~/.bin on the new system.
 #
 # Sources, in order of reliability:
-#   1. REPO bin/            — dsa + keypress-sound are COMMITTED to this repo,
+#   1. REPO bin/            — dsa + keypress-sound + aphone + amt + qb +
+#                             helix-zen + furl are COMMITTED to this repo,
 #                             so a fresh laptop always gets them (there is no
 #                             ~/.bin source on a brand-new system).
 #   2. ~/.bin on the OLD system (override with BIN_SRC=/path) — optional extra
@@ -50,6 +51,7 @@ REPO_BINARIES=(
     "amt"
     "qb"
     "helix-zen"
+    "furl"
 )
 
 # Verify repo binaries against the checksum manifest BEFORE installing:
@@ -313,7 +315,7 @@ log ""
 log "============================================"
 log "  BIN COPY COMPLETE"
 log "============================================"
-log "  Repo source:  $REPO_ROOT/bin/ (dsa, keypress-sound, aphone, amt, qb, helix-zen)"
+log "  Repo source:  $REPO_ROOT/bin/ (dsa, keypress-sound, aphone, amt, qb, helix-zen, furl)"
 log "  Extra source: $BIN_SRC (optional, old system)"
 log "  Destination:  $BIN_DST"
 log "  Copied: $COPIED binaries"
@@ -326,6 +328,7 @@ log "    - aphone (Android file transfer over USB via adb: ls/pull/push)"
 log "    - amt (Android MTP mount at ~/mnt/phone for TUI browsing with lf: amt | amt u)"
 log "    - qb (qutebrowser profile launcher: qb [ritik|blank|luxa|developer|callsmaster] [url])"
 log "    - helix-zen (zen-mode toggle for Helix: helix-zen [on|off|toggle], bound to <space>z)"
+log "    - furl (file:// URL printer + clipboard copy: furl ./img.png)"
 log "  Short GUI alias (shim, needs package installed):"
 log "    - aft -> android-file-transfer (MTP drag-and-drop window)"
 log ""

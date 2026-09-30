@@ -17,3 +17,9 @@ settings:
     global: webengine
   colors.webpage.preferred_color_scheme:
     global: dark
+  content.notifications.enabled:
+    https://www.youtube.com: false
+  statusbar.show:
+    global: always
+  tabs.show:
+    global: always

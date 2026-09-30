@@ -41,7 +41,7 @@ done
 
 # --- 2. Core packages (dwm + session stack) ---------------------------------
 section "2. Core packages (dwm + session stack)"
-CORE_PKGS="ly alacritty dunst touchegg xdotool xorg-xsetroot xorg-xrandr xorg-xinput xorg-xmodmap maim slop slock brightnessctl playerctl pipewire wireplumber acpid tmux neovim lf zed"
+CORE_PKGS="ly alacritty dunst touchegg xdotool xorg-xsetroot xorg-xrandr xorg-xinput xorg-xmodmap xorg-xset maim slop slock brightnessctl playerctl pipewire wireplumber acpid tmux neovim lf zed"
 for p in $CORE_PKGS; do
     if have_pkg "$p"; then pass "package: $p"; else fail "package missing: $p"; fi
 done
@@ -64,6 +64,16 @@ else
 fi
 if have_bin judo; then pass "judo on PATH (cargo install judo)"; else warn "judo not on PATH (fix: cargo install judo + ensure ~/.cargo/bin in PATH)"; fi
 if have_bin wiremix; then pass "wiremix on PATH (TUI PipeWire mixer)"; else warn "wiremix not on PATH (fix: sudo pacman -S --needed wiremix)"; fi
+# Rust via rustup (not the pacman `rust` package)
+if have_bin rustup; then pass "rustup on PATH (Rust toolchain manager)"; else warn "rustup not on PATH (fix: sudo pacman -S --needed rustup + rustup default stable)"; fi
+if rustup show active-toolchain 2>/dev/null | grep -q "stable"; then pass "rustup default toolchain stable"; else warn "rustup stable not default (fix: rustup toolchain install stable && rustup default stable)"; fi
+if have_bin furl; then pass "furl on PATH (repo bin/furl)"; else warn "furl not on PATH (fix: re-run scripts/bin-copy.sh)"; fi
+if have_file "$HOME/.config/judo/judo.toml"; then pass "judo config present (~/.config/judo/judo.toml)"; else warn "judo config missing (re-run setup.sh step 5)"; fi
+if have_file "$REPO_ROOT/configs/judo/judo.toml"; then pass "repo configs/judo/judo.toml present"; else warn "repo configs/judo/judo.toml missing"; fi
+if have_bin mongosh; then pass "mongosh on PATH (mongodb shell)"; else warn "mongosh not on PATH (fix: yay -S mongodb-bin mongosh-bin)"; fi
+if have_pkg mongodb-bin 2>/dev/null || have_bin mongod; then pass "mongodb-bin installed"; else warn "mongodb-bin missing (fix: yay -S mongodb-bin mongosh-bin)"; fi
+if systemctl is-enabled mongodb.service >/dev/null 2>&1; then pass "mongodb.service enabled"; else warn "mongodb.service not enabled (fix: sudo systemctl enable mongodb)"; fi
+if have_bin PINCE; then pass "PINCE on PATH (PINCE RE tool)"; elif pacman -Qi pince-bin >/dev/null 2>&1; then pass "pince-bin installed (launch: PINCE)"; else warn "pince-bin missing (fix: yay -S pince-bin)"; fi
 
 # --- 4. System configs -------------------------------------------------------
 section "4. System configs (/etc/ly, xsessions, acpi)"
@@ -153,6 +163,36 @@ if have_file /etc/X11/xorg.conf.d/30-natural-scroll.conf; then
         if [ "$nat_on" -gt 0 ] && [ "$nat_off" -eq 0 ]; then pass "natural scrolling live (xinput enabled)"; else warn "natural scrolling Xorg installed but live xinput not all enabled ($nat_on on, $nat_off off)"; fi
         unset _id
     fi
+fi
+# Screen must NEVER auto-blank/auto-sleep (only manual Super+Shift+X / power button locks).
+if have_file /etc/X11/xorg.conf.d/10-no-blanking.conf && grep -q 'BlankTime.*"0"' /etc/X11/xorg.conf.d/10-no-blanking.conf 2>/dev/null; then
+    pass "no-blanking Xorg config installed (screen never sleeps)"
+else
+    warn "no-blanking config missing: /etc/X11/xorg.conf.d/10-no-blanking.conf (screen sleeps after ~10min idle — re-run scripts/dwm-config.sh)"
+fi
+if have_file "$REPO_ROOT/configs/xorg/10-no-blanking.conf"; then
+    pass "repo configs/xorg/10-no-blanking.conf present"
+else
+    warn "repo configs/xorg/10-no-blanking.conf missing"
+fi
+if grep -q "xset s off -dpms" "$REPO_ROOT/configs/ly/dwm-session" 2>/dev/null; then
+    pass "dwm-session disables blanking live (xset s off -dpms)"
+else
+    warn "dwm-session missing xset blanking disable (screen may sleep until next login fix)"
+fi
+if [ -n "${DISPLAY:-}" ] && have_bin xset; then
+    if xset q 2>/dev/null | grep -q "DPMS is Disabled"; then
+        pass "DPMS disabled live (xset q)"
+    else
+        warn "DPMS still enabled live (fix now: xset s off -dpms; xset s noblank)"
+    fi
+    if xset q 2>/dev/null | grep -A1 "Screen Saver:" | grep -q "timeout:  0"; then
+        pass "screensaver timeout 0 live (never blanks)"
+    else
+        warn "screensaver timeout non-zero live (fix now: xset s off; xset s noblank)"
+    fi
+elif [ -n "${DISPLAY:-}" ]; then
+    warn "xorg-xset missing — cannot verify/disable blanking live (fix: sudo pacman -S --needed xorg-xset)"
 fi
 if have_exec /usr/local/bin/super-clipboard || have_exec "$HOME/.local/bin/super-clipboard"; then
     pass "super-clipboard installed (/usr/local/bin/super-clipboard)"
@@ -728,6 +768,16 @@ if grep -qF 'HOME/.bin' "$HOME/.bashrc" 2>/dev/null || grep -qF 'HOME/.bin' "$HO
     pass "~/.bin in PATH (shell rc)"
 else
     warn "~/.bin not referenced in shell rc (custom binaries won't resolve)"
+fi
+if [[ ! -f "$HOME/.zshrc" ]] || grep -qF 'project_or_command' "$HOME/.zshrc" 2>/dev/null; then
+    [[ -f "$HOME/.zshrc" ]] && pass "zsh project-jump widget present" || info "no ~/.zshrc (bash-only system, widget N/A)"
+else
+    warn "zsh project-jump widget missing (re-run scripts/aliases.sh)"
+fi
+if [[ ! -f "$HOME/.zshrc" ]] || grep -qF 'cachyos-zsh-config/cachyos-config.zsh' "$HOME/.zshrc" 2>/dev/null; then
+    [[ -f "$HOME/.zshrc" ]] && pass "cachyos zsh config sourced" || true
+else
+    warn "cachyos-config.zsh not sourced in ~/.zshrc (re-run scripts/aliases.sh)"
 fi
 if [ -f "$HOME/.ssh/config" ] && grep -qF 'cachyOS-setup SSH config' "$HOME/.ssh/config"; then
     pass "ssh config installed"

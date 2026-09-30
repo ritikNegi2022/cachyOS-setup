@@ -79,7 +79,7 @@ else
     done
     if [ -n "$missing_deps" ]; then
         warn "missing build inputs:$missing_deps"
-        warn "install.sh provides rust/node; zip/unzip arrive as make deps."
+        warn "install.sh provides rustup/stable + node; zip/unzip arrive as make deps."
         warn "re-run install.sh if any are still missing after this script."
     fi
 

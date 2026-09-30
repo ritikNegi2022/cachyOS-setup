@@ -424,8 +424,8 @@ Installed by Step 1 (`scripts/install.sh`), all on PATH:
 - **Node:** `node` + `npm` (user prefix `~/.npm-global`, never sudo),
   globals `typescript` (`tsc`), `tsx` (run TS directly), `prettier`,
   `eslint`; `freebuff` agent (§8).
-- **Rust:** `rustc` + `cargo`, `clippy` (`cargo clippy`), `rustfmt`
-  (`cargo fmt`); `rust-analyzer` LSP.
+- **Rust:** `rustup` + `stable` toolchain (`rustc` + `cargo`,
+  `clippy` via `cargo clippy`, `rustfmt` via `cargo fmt`); `rust-analyzer` LSP.
 - **C/C++:** `clang` + `clangd` + `clang-format`
   (Zed style: 100 cols, 4-space, attach braces).
 - **Lua / TS servers:** `lua-language-server`, `typescript-language-server`
@@ -528,11 +528,12 @@ Installed by Step 1 (`scripts/install.sh`), all on PATH:
 | `configs/locale/locale.conf` | `/etc/locale.conf` |
 | `configs/ssh/git_blank.pub` | reference only (private key never in repo) |
 | `bin/dsa`, `bin/keypress-sound` | `~/.bin/` |
-| `bin/qb` | `~/.bin/qb` (qutebrowser profiles: `qb [ritik\|blank\|luxa\|developer\|callsmaster] [url]`) |
+| `bin/qb`, `bin/amt`, `bin/aphone`, `bin/helix-zen`, `bin/furl` | `~/.bin/` (qb profiles, amt MTP mount, aphone adb, helix-zen toggle, furl file:// URLs) |
+| `configs/judo/judo.toml` | `~/.config/judo/judo.toml` (home path rewritten on install) |
 | `docs/*.md` | `~/Documents/`, `~/`, `/usr/share/doc/cachyOS-setup/` |
 
 Shell-rc markers (idempotent, re-runnable): `cachyOS-setup PATH`,
-`cachyOS-setup aliases`, `cachyOS-setup ssh-agent`, `.npm-global/bin`,
+`cachyOS-setup aliases`, `cachyOS-setup project-jump`, `cachyOS-setup ssh-agent`, `.npm-global/bin`,
 `.opencode/bin`, UTF-8 `LANG`/`LC_ALL` exports.
 
 ---
