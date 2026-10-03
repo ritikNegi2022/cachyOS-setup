@@ -4,15 +4,20 @@
 # dwm reads its status from the root window name, so we just xsetroot it.
 # Started by dwm-session (configs/ly/dwm-session): ~/.config/dwm/statusbar.sh &
 
-# bytes/sec -> compact "12B" / "3.4K" / "56.7M" / "1.23G".
-# Pure shell builtins (no awk fork) so the 1s tick stays cheap.
+# bytes/sec -> compact rate in $fmt_out ("12B" / "3.4K" / "56.7M" / "1.23G").
+# Pure shell builtins, always <= 5 chars, so `%5s` columns never shift width.
 fmt_rate() {
     b=${1:-0}
     case "$b" in ''|*[!0-9]*) b=0 ;; esac
-    if [ "$b" -lt 1024 ]; then printf '%dB' "$b"
-    elif [ "$b" -lt 1048576 ]; then printf '%d.%dK' $((b / 1024)) $(((b % 1024) * 10 / 1024))
-    elif [ "$b" -lt 1073741824 ]; then printf '%d.%dM' $((b / 1048576)) $(((b % 1048576) * 10 / 1048576))
-    else printf '%d.%02dG' $((b / 1073741824)) $(((b % 1073741824) * 100 / 1073741824))
+    if [ "$b" -lt 1024 ]; then fmt_out="${b}B"
+    elif [ "$b" -lt 102400 ]; then fmt_out="$((b / 1024)).$(((b % 1024) * 10 / 1024))K"
+    elif [ "$b" -lt 1048576 ]; then fmt_out="$((b / 1024))K"
+    elif [ "$b" -lt 10485760 ]; then fmt_out="$((b / 1048576)).$(((b % 1048576) * 10 / 1048576))M"
+    elif [ "$b" -lt 104857600 ]; then fmt_out="$((b / 1048576)).$(((b % 1048576) * 10 / 1048576))M"
+    elif [ "$b" -lt 1073741824 ]; then fmt_out="$((b / 1048576))M"
+    else
+        g_int=$((b / 1073741824)); g_frac=$(((b % 1073741824) * 100 / 1073741824))
+        fmt_out="$g_int.$((g_frac / 10))$((g_frac % 10))G"
     fi
 }
 
@@ -29,13 +34,14 @@ update() {
             elif [ "$pct" -lt 70 ]; then icon=""
             else icon=""
             fi
-            vol="$icon ${pct}%"
+            # fixed width: mute is 4 chars, so pad percent to 4 ("  5%"/"100%")
+            vol=$(printf '%s %3d%%' "$icon" "$pct")
             ;;
     esac
 
     # Brightness — brightnessctl prints "Current brightness: 123 (50%)"
     br_raw=$(brightnessctl info 2>/dev/null | awk -F'[()%]' '/%/ {print $2; exit}')
-    if [ -n "$br_raw" ]; then br="󰃠 ${br_raw}%"; else br="󰃠 -"; fi
+    if [ -n "$br_raw" ]; then br=$(printf '󰃠 %3d%%' "$br_raw"); else br="󰃠  --%"; fi
 
     # Battery — icon based on capacity + charging
     bat=""
@@ -51,14 +57,17 @@ update() {
         elif [ "$cap" -ge 10 ]; then bat_icon=""
         else bat_icon=""
         fi
+        # state suffix is always exactly 1 char (space when discharging)
+        # and capacity is %3d, so this segment never changes width
         case "$status" in
-            Charging) bat="$bat_icon ${cap}% 󱐋" ;;
-            Full)     bat="$bat_icon ${cap}%+" ;;
-            *)        bat="$bat_icon ${cap}%" ;;
+            Charging) st="󱐋" ;;
+            Full)     st="+" ;;
+            *)        st=" " ;;
         esac
+        bat=$(printf '%s %3d%%%s' "$bat_icon" "$cap" "$st")
         break
     done
-    [ -n "$bat" ] || bat=" -"
+    [ -n "$bat" ] || bat="  --% "
 
     # Network — SSID for wifi, "eth" for cable, "down" with no default route + icon
     net=" down"
@@ -72,13 +81,13 @@ update() {
                      pct=$(( (lvl + 100) * 2 ))
                      [ "$pct" -gt 100 ] && pct=100
                      [ "$pct" -lt 0 ] && pct=0
-                     # wifi signal icon
-                     if [ "$pct" -ge 75 ]; then net_icon="󰤨"
-                     elif [ "$pct" -ge 50 ]; then net_icon="󰤥"
-                     elif [ "$pct" -ge 25 ]; then net_icon="󰤢"
-                     else net_icon="󰤯"
-                     fi
-                     net="$net_icon $base ${pct}%"
+                      # wifi signal icon + fixed-width percent
+                      if [ "$pct" -ge 75 ]; then net_icon="󰤨"
+                      elif [ "$pct" -ge 50 ]; then net_icon="󰤥"
+                      elif [ "$pct" -ge 25 ]; then net_icon="󰤢"
+                      else net_icon="󰤯"
+                      fi
+                      net=$(printf '%s %s %3d%%' "$net_icon" "$base" "$pct")
                  else
                      net=" $base"
                  fi ;;
@@ -88,10 +97,10 @@ update() {
 
     # Internet speed — down/up rate on the default iface, from kernel byte
     # counters diffed against the previous 1s tick (same cache pattern as cpu).
-    # Zero forks here: shell builtins only (read/printf/arithmetic), so this
-    # segment adds no measurable cost to the continuous 1s tick.
+    # Builtins only (read/printf/arithmetic, no external commands), and both
+    # rates are fixed-width %5s, so this segment never shifts the layout.
     # First tick / iface change shows "--" until a baseline exists.
-    spd="󰇚 -- 󰕒 --"
+    spd_down="--"; spd_up="--"
     if [ -n "$iface" ] && [ -f "/sys/class/net/$iface/statistics/rx_bytes" ]; then
         net_stat_file="${XDG_RUNTIME_DIR:-/tmp}/.net_stat_prev-${USER:-blank}"
         rx=""; tx=""
@@ -105,11 +114,13 @@ update() {
                 drx=$((rx - prx)); dtx=$((tx - ptx))
                 [ "$drx" -lt 0 ] 2>/dev/null && drx=0
                 [ "$dtx" -lt 0 ] 2>/dev/null && dtx=0
-                spd="󰇚 $(fmt_rate "$drx") 󰕒 $(fmt_rate "$dtx")"
+                fmt_rate "$drx"; spd_down=$fmt_out
+                fmt_rate "$dtx"; spd_up=$fmt_out
             fi
         fi
         printf '%s %s %s' "$iface" "$rx" "$tx" > "$net_stat_file" 2>/dev/null || true
     fi
+    spd=$(printf '󰇚 %5s 󰕒 %5s' "$spd_down" "$spd_up")
 
     # CPU temperature — icon + value
     temp="-"
@@ -133,47 +144,48 @@ update() {
         elif [ "$c" -ge 60 ]; then cpu_icon=""
         else cpu_icon=""
         fi
-        temp="$cpu_icon ${c}°C"
+        temp=$(printf '%s %3d°C' "$cpu_icon" "$c")
     else
-        temp=" -"
+        temp="  --°C"
     fi
 
-    # CPU usage per core — via /proc/stat diff against /tmp cache
+    # CPU usage (combined) — via /proc/stat diff against /tmp cache.
+    # All cores summed into one fixed-width percent, so the bar never jumps.
     cpu_stat_prev="${XDG_RUNTIME_DIR:-/tmp}/.cpu_stat_prev-${USER:-blank}"
     cpu_usage=""
     # read current: cpu-id total idle (idle includes iowait)
     cur_stat=$(awk '/^cpu[0-9]/ {print $1, $2+$3+$4+$5+$6+$7+$8, $5+$6}' /proc/stat 2>/dev/null)
     if [ -f "$cpu_stat_prev" ] && [ -n "$cur_stat" ]; then
-        cpu_usage=""
+        tot=0; idle=0
         while IFS= read -r line; do
             set -- $line
             cpu_id=$1; cur_total=$2; cur_idle=$3
             prev_line=$(grep -E "^$cpu_id " "$cpu_stat_prev" 2>/dev/null)
             if [ -n "$prev_line" ]; then
                 set -- $prev_line
-                prev_total=$2; prev_idle=$3
-                total_diff=$((cur_total - prev_total))
-                idle_diff=$((cur_idle - prev_idle))
-                if [ "$total_diff" -gt 0 ] 2>/dev/null; then
-                    used=$((total_diff - idle_diff))
-                    pct=$((used * 100 / total_diff))
-                    [ "$pct" -lt 0 ] && pct=0
-                    [ "$pct" -gt 100 ] && pct=100
-                    cpu_usage="$cpu_usage $pct%"
-                fi
+                tot=$((tot + cur_total - $2))
+                idle=$((idle + cur_idle - $3))
             fi
         done <<EOF
 $cur_stat
 EOF
-        cpu_usage=$(printf '%s' "$cpu_usage" | sed 's/^ //')
-        [ -n "$cpu_usage" ] && cpu_usage="󰘚 $cpu_usage" || cpu_usage="󰘚 -"
+        if [ "$tot" -gt 0 ] 2>/dev/null; then
+            pct=$(((tot - idle) * 100 / tot))
+            [ "$pct" -lt 0 ] && pct=0
+            [ "$pct" -gt 100 ] && pct=100
+            # fixed 4 chars ("  0%"/"100%"), no fork
+            if [ "$pct" -lt 10 ]; then core="  $pct%"
+            elif [ "$pct" -lt 100 ]; then core=" $pct%"
+            else core="$pct%"
+            fi
+            cpu_usage="󰘚 $core"
+        fi
     else
-        # first tick — placeholder, will populate next second
-        cpu_usage="󰘚 --"
+        # first tick — same-width placeholder until the real value arrives
+        cpu_usage="󰘚  --%"
     fi
     printf '%s\n' "$cur_stat" > "$cpu_stat_prev" 2>/dev/null || true
-    [ -z "$cpu_usage" ] && cpu_usage="󰘚 -"
-
+    [ -z "$cpu_usage" ] && cpu_usage="󰘚  --%"
     # Memory — icon + used/total + percent
     mem_info=$(awk '/MemTotal:/ {t=$2} /MemAvailable:/ {a=$2} END {if (t>0){u=t-a; pct=u*100/t; printf "%d %d %d", u, t, pct}}' /proc/meminfo 2>/dev/null)
     if [ -n "$mem_info" ]; then
@@ -186,9 +198,9 @@ EOF
         elif [ "$mem_pct" -ge 60 ]; then mem_icon="󰍛"
         else mem_icon="󰍛"
         fi
-        mem="$mem_icon ${mem_pct}% ${mem_used_g}/${mem_total_g}G"
+        mem=$(printf '%s %3d%% %5s/%5sG' "$mem_icon" "$mem_pct" "$mem_used_g" "$mem_total_g")
     else
-        mem="󰍛 -"
+        mem="󰍛 $(printf '%3s%% %5s/%5sG' n/a n/a n/a)"
     fi
 
     # Time — with seconds, icon
