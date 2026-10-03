@@ -1,7 +1,20 @@
 #!/bin/sh
-# Minimal dwm statusline: volume, brightness, battery, network, cpu temp, time
+# Minimal dwm statusline: volume, brightness, battery, network, net speed,
+# cpu temp, time
 # dwm reads its status from the root window name, so we just xsetroot it.
 # Started by dwm-session (configs/ly/dwm-session): ~/.config/dwm/statusbar.sh &
+
+# bytes/sec -> compact "12B" / "3.4K" / "56.7M" / "1.23G".
+# Pure shell builtins (no awk fork) so the 1s tick stays cheap.
+fmt_rate() {
+    b=${1:-0}
+    case "$b" in ''|*[!0-9]*) b=0 ;; esac
+    if [ "$b" -lt 1024 ]; then printf '%dB' "$b"
+    elif [ "$b" -lt 1048576 ]; then printf '%d.%dK' $((b / 1024)) $(((b % 1024) * 10 / 1024))
+    elif [ "$b" -lt 1073741824 ]; then printf '%d.%dM' $((b / 1048576)) $(((b % 1048576) * 10 / 1048576))
+    else printf '%d.%02dG' $((b / 1073741824)) $(((b % 1073741824) * 100 / 1073741824))
+    fi
+}
 
 update() {
     # Volume — wpctl: "Volume: 0.53" or "Volume: 0.53 [MUTED]" + icon
@@ -71,6 +84,31 @@ update() {
                  fi ;;
             *)   net="󰈀 eth" ;;
         esac
+    fi
+
+    # Internet speed — down/up rate on the default iface, from kernel byte
+    # counters diffed against the previous 1s tick (same cache pattern as cpu).
+    # Zero forks here: shell builtins only (read/printf/arithmetic), so this
+    # segment adds no measurable cost to the continuous 1s tick.
+    # First tick / iface change shows "--" until a baseline exists.
+    spd="󰇚 -- 󰕒 --"
+    if [ -n "$iface" ] && [ -f "/sys/class/net/$iface/statistics/rx_bytes" ]; then
+        net_stat_file="${XDG_RUNTIME_DIR:-/tmp}/.net_stat_prev-${USER:-blank}"
+        rx=""; tx=""
+        read -r rx < "/sys/class/net/$iface/statistics/rx_bytes" 2>/dev/null
+        read -r tx < "/sys/class/net/$iface/statistics/tx_bytes" 2>/dev/null
+        case "$rx$tx" in ''|*[!0-9]*) rx=""; tx="" ;; esac
+        if [ -n "$rx" ] && [ -n "$tx" ] && [ -f "$net_stat_file" ]; then
+            piface=""; prx=""; ptx=""
+            read -r piface prx ptx < "$net_stat_file" 2>/dev/null
+            if [ "$piface" = "$iface" ] && [ -n "$prx" ] && [ -n "$ptx" ]; then
+                drx=$((rx - prx)); dtx=$((tx - ptx))
+                [ "$drx" -lt 0 ] 2>/dev/null && drx=0
+                [ "$dtx" -lt 0 ] 2>/dev/null && dtx=0
+                spd="󰇚 $(fmt_rate "$drx") 󰕒 $(fmt_rate "$dtx")"
+            fi
+        fi
+        printf '%s %s %s' "$iface" "$rx" "$tx" > "$net_stat_file" 2>/dev/null || true
     fi
 
     # CPU temperature — icon + value
@@ -157,8 +195,8 @@ EOF
     tme=$(date +" %a %d %b %H:%M:%S")
 
     # Proper styling with separators and icons — dwm bar uses JetBrainsMono Nerd Font
-    # Format:  vol │ br │ bat │ net │ cpu temp + usage │ mem │ time
-    xsetroot -name " $vol │ $br │ $bat │ $net │ $temp $cpu_usage │ $mem │ $tme "
+    # Format:  vol │ br │ bat │ net │ down/up speed │ cpu temp + usage │ mem │ time
+    xsetroot -name " $vol │ $br │ $bat │ $net │ $spd │ $temp $cpu_usage │ $mem │ $tme "
 }
 
 # Responsive: wake instantly on volume/brightness changes via SIGUSR1, plus 1s tick for seconds
