@@ -4,22 +4,24 @@
 # dwm reads its status from the root window name, so we just xsetroot it.
 # Started by dwm-session (configs/ly/dwm-session): ~/.config/dwm/statusbar.sh &
 
-# bytes/sec -> compact rate in $fmt_out ("12B" / "3.4K" / "56.7M" / "1.23G").
-# Pure shell builtins, always <= 5 chars, so `%5s` columns never shift width.
+# bits/sec -> compact rate in $fmt_out ("850Kb" / "91.0Mb" / "1.20Gb").
+# Network convention (decimal SI) to match speed tests like fast.com.
+# Pure shell builtins, always <= 6 chars, so `%6s` columns never shift width.
 fmt_rate() {
     b=${1:-0}
     case "$b" in ''|*[!0-9]*) b=0 ;; esac
-    if [ "$b" -lt 1024 ]; then fmt_out="${b}B"
-    elif [ "$b" -lt 102400 ]; then fmt_out="$((b / 1024)).$(((b % 1024) * 10 / 1024))K"
-    elif [ "$b" -lt 1048576 ]; then fmt_out="$((b / 1024))K"
-    elif [ "$b" -lt 10485760 ]; then fmt_out="$((b / 1048576)).$(((b % 1048576) * 10 / 1048576))M"
-    elif [ "$b" -lt 104857600 ]; then fmt_out="$((b / 1048576)).$(((b % 1048576) * 10 / 1048576))M"
-    elif [ "$b" -lt 1073741824 ]; then fmt_out="$((b / 1048576))M"
-    else
-        g_int=$((b / 1073741824)); g_frac=$(((b % 1073741824) * 100 / 1073741824))
-        fmt_out="$g_int.$((g_frac / 10))$((g_frac % 10))G"
+    if [ "$b" -lt 1000 ]; then fmt_out="${b}b"
+    elif [ "$b" -lt 100000 ]; then fmt_out="$((b / 1000)).$(((b % 1000) / 100))Kb"
+    elif [ "$b" -lt 1000000 ]; then fmt_out="$((b / 1000))Kb"
+    elif [ "$b" -lt 10000000 ]; then fmt_out="$((b / 1000000)).$(((b % 1000000) / 100000))Mb"
+    elif [ "$b" -lt 100000000 ]; then fmt_out="$((b / 1000000)).$(((b % 1000000) / 100000))Mb"
+    elif [ "$b" -lt 1000000000 ]; then fmt_out="$((b / 1000000))Mb"
+    else fmt_out="$((b / 1000000000)).$(((b % 1000000000) / 10000000))Gb"
     fi
 }
+# last shown rates — persist across update() calls so sub-second extra ticks
+# (volume/brightness keys) keep showing the previous value instead of dipping
+spd_down="--"; spd_up="--"
 
 update() {
     # Volume — wpctl: "Volume: 0.53" or "Volume: 0.53 [MUTED]" + icon
@@ -96,31 +98,55 @@ update() {
     fi
 
     # Internet speed — down/up rate on the default iface, from kernel byte
-    # counters diffed against the previous 1s tick (same cache pattern as cpu).
-    # Builtins only (read/printf/arithmetic, no external commands), and both
-    # rates are fixed-width %5s, so this segment never shifts the layout.
-    # First tick / iface change shows "--" until a baseline exists.
-    spd_down="--"; spd_up="--"
+    # counters. Rate = bits/elapsed wall seconds, so extra ticks (volume keys)
+    # and slow ticks can't skew it, and sleep/resume shows ~0, not a spike.
+    # Bits + decimal SI to match speed tests (fast.com etc.).
+    # Builtins only (read/printf/arithmetic), fixed-width %6s columns.
     if [ -n "$iface" ] && [ -f "/sys/class/net/$iface/statistics/rx_bytes" ]; then
         net_stat_file="${XDG_RUNTIME_DIR:-/tmp}/.net_stat_prev-${USER:-blank}"
-        rx=""; tx=""
+        rx=""; tx=""; now=""
         read -r rx < "/sys/class/net/$iface/statistics/rx_bytes" 2>/dev/null
         read -r tx < "/sys/class/net/$iface/statistics/tx_bytes" 2>/dev/null
-        case "$rx$tx" in ''|*[!0-9]*) rx=""; tx="" ;; esac
-        if [ -n "$rx" ] && [ -n "$tx" ] && [ -f "$net_stat_file" ]; then
-            piface=""; prx=""; ptx=""
-            read -r piface prx ptx < "$net_stat_file" 2>/dev/null
-            if [ "$piface" = "$iface" ] && [ -n "$prx" ] && [ -n "$ptx" ]; then
-                drx=$((rx - prx)); dtx=$((tx - ptx))
-                [ "$drx" -lt 0 ] 2>/dev/null && drx=0
-                [ "$dtx" -lt 0 ] 2>/dev/null && dtx=0
-                fmt_rate "$drx"; spd_down=$fmt_out
-                fmt_rate "$dtx"; spd_up=$fmt_out
+        read -r uptime _ < /proc/uptime 2>/dev/null
+        now=${uptime%.*}
+        case "$rx$tx$now" in ''|*[!0-9]*) rx=""; tx=""; now="" ;; esac
+        if [ -n "$rx" ] && [ -n "$tx" ] && [ -n "$now" ] && [ -f "$net_stat_file" ]; then
+            piface=""; prx=""; ptx=""; pnow=""
+            read -r piface prx ptx pnow < "$net_stat_file" 2>/dev/null
+            case "$prx$ptx$pnow" in ''|*[!0-9]*) pnow="" ;; esac
+            if [ "$piface" = "$iface" ] && [ -n "$pnow" ]; then
+                dt=$((now - pnow))
+                if [ "$dt" -ge 1 ] 2>/dev/null; then
+                    drx=$((rx - prx)); dtx=$((tx - ptx))
+                    [ "$drx" -lt 0 ] 2>/dev/null && drx=0
+                    [ "$dtx" -lt 0 ] 2>/dev/null && dtx=0
+                    fmt_rate $((drx * 8 / dt)); spd_down=$fmt_out
+                    fmt_rate $((dtx * 8 / dt)); spd_up=$fmt_out
+                fi
+                # dt<1 (extra tick from volume/brightness keys): keep last values
             fi
         fi
-        printf '%s %s %s' "$iface" "$rx" "$tx" > "$net_stat_file" 2>/dev/null || true
+        printf '%s %s %s %s' "$iface" "$rx" "$tx" "$now" > "$net_stat_file" 2>/dev/null || true
+    else
+        spd_down="--"; spd_up="--"
     fi
-    spd=$(printf '󰇚 %5s 󰕒 %5s' "$spd_down" "$spd_up")
+    # Internet check — cached (every 15s): a background single-ping decides
+    # online/offline, so the 1s tick itself never blocks. Offline forces 0b
+    # (LAN-only or dead uplink); no result yet means assume online.
+    net_ok_file="${XDG_RUNTIME_DIR:-/tmp}/.net_ok-${USER:-blank}"
+    net_ok=""; ok_epoch=""
+    [ -f "$net_ok_file" ] && read -r net_ok ok_epoch < "$net_ok_file" 2>/dev/null
+    case "$ok_epoch" in ''|*[!0-9]*) ok_epoch=0 ;; esac
+    read -r up_now _ < /proc/uptime 2>/dev/null
+    up_now=${up_now%.*}
+    case "$up_now" in ''|*[!0-9]*) up_now=0 ;; esac
+    if [ $((up_now - ok_epoch)) -gt 15 ] 2>/dev/null; then
+        ( if ping -c1 -W2 8.8.8.8 >/dev/null 2>&1 || ping -c1 -W2 1.1.1.1 >/dev/null 2>&1; then st=1; else st=0; fi
+          read -r up_then _ < /proc/uptime 2>/dev/null
+          printf '%s %s' "$st" "${up_then%.*}" > "$net_ok_file" 2>/dev/null ) &
+    fi
+    if [ "$net_ok" = "0" ] && [ -n "$iface" ]; then spd_down="0b"; spd_up="0b"; fi
+    spd=$(printf '󰇚 %6s 󰕒 %6s' "$spd_down" "$spd_up")
 
     # CPU temperature — icon + value
     temp="-"
@@ -207,7 +233,7 @@ EOF
     tme=$(date +" %a %d %b %H:%M:%S")
 
     # Proper styling with separators and icons — dwm bar uses JetBrainsMono Nerd Font
-    # Format:  vol │ br │ bat │ net │ down/up speed │ cpu temp + usage │ mem │ time
+    # Format:  vol │ br │ bat │ net │ down/up + max │ cpu temp + usage │ mem │ time
     xsetroot -name " $vol │ $br │ $bat │ $net │ $spd │ $temp $cpu_usage │ $mem │ $tme "
 }
 

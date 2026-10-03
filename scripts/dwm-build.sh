@@ -69,10 +69,31 @@ log "Building dwm with custom config.h in $BUILD_DIR"
     fi
     log "Injected custom config.h (src/config.h + $local_tree/config.h)"
 
-    # Build + install. makepkg re-runs prepare() which copies src/config.h
-    # (ours) into the tree — then compiles it.
-    makepkg -si --noconfirm || {
-        err "makepkg -si (build/install) failed"
+    # Apply our vendored dwm.c patches (attachasideandbelow, grid, movestack).
+    # They live in the repo so every rebuild is reproducible; a failed hunk
+    # aborts loudly instead of silently building stock behavior.
+    PATCH_DIR="$REPO_ROOT/configs/dwm/patches"
+    if compgen -G "$PATCH_DIR/*.diff" > /dev/null; then
+        # Diffs are rooted at a/dwm.c, so apply from inside the extracted
+        # tree where ./dwm.c lives (patch -p1 strips the a/ prefix).
+        for patch_file in "$PATCH_DIR"/*.diff; do
+            log "Applying $(basename "$patch_file")..."
+            (cd "$local_tree" && patch -p1 --forward --strip=1 < "$patch_file") || {
+                err "Patch failed: $patch_file (dwm sources may have changed — update configs/dwm/patches/)"
+                exit 1
+            }
+        done
+        log "All dwm.c patches applied"
+    else
+        log "No patches in $PATCH_DIR — stock dwm.c"
+    fi
+
+    # Build + install on the EXISTING tree (-e = no re-extract). A plain -si
+    # would re-extract pristine sources here, silently wiping the dwm.c
+    # patches applied above (config.h survives only because prepare()
+    # re-copies it — dwm.c has no such second chance).
+    makepkg -sei --noconfirm || {
+        err "makepkg -sei (build/install) failed"
         exit 1
     }
 )

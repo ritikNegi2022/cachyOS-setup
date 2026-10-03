@@ -38,6 +38,9 @@ Tile = left `master` + right `stack` (`mfact 0.55`, `nmaster 1`, `config.h:34-35
 |---|---|---|
 | `Super + j` | focus **next** window | `focusstack +1` (`config.h:173`) |
 | `Super + k` | focus **prev** window | `focusstack -1` (`config.h:174`) |
+| `Super + Shift + j` | **swap** focused window with next (push down the stack) | `movestack +1` (patched `dwm.c`) |
+| `Super + Shift + k` | **swap** focused window with previous (push up the stack) | `movestack -1` (patched `dwm.c`) |
+| `Super + Ctrl + Enter` | **swap** focused window with master | `zoom` (middle-click title also works) |
 | `Super + h` | shrink master area `-0.05` | `setmfact` (`config.h:177`) |
 | `Super + l` | expand master area `+0.05` | `setmfact` (`config.h:178`) |
 | `Super + i` | +1 window in master | `incnmaster +1` (`config.h:175`) |
@@ -49,6 +52,8 @@ Tile = left `master` + right `stack` (`mfact 0.55`, `nmaster 1`, `config.h:34-35
 
 Grouped windows = monocle: use `Super + j / k` to cycle between windows in the single group.
 
+New windows open **next to the focused window** (never steal master) via the vendored `attachasideandbelow` patch (`configs/dwm/patches/`); `Super + o` grid auto-splits like Hyprland.
+
 ## 4. Layouts
 
 Symbols in bar: `` = tile, `` = floating, `` = monocle.
@@ -59,6 +64,7 @@ Symbols in bar: `` = tile, `` = floating, `` = monocle.
 | `Super + f` | **fullscreen** current window | `togglefullscreen` (`config.h:186`) |
 | `Super + Shift + f` | floating layout `` | `setlayout layouts[1]` (`config.h:187`) |
 | `Super + m` | monocle layout `` (grouped) | `setlayout layouts[2]` (`config.h:188`) |
+| `Super + o` | **grid** layout (optimal auto-split, Hyprland-like) | `setlayout layouts[3]` (patched `dwm.c`) |
 | `Super + y` | **group** toggle Hyprland-like (tile <-> monocle, per-tag: stays on its tag) | `togglegroup` + `viewgroup` (`config.h`) |
 | `Super + Space` | cycle layout (tile -> float -> monocle) | `setlayout 0` (`config.h:190`) |
 | `Super + F12` | toggle **statusbar** (hidden by default, `showbar=0`) | `togglebar` (`config.h:138`) |

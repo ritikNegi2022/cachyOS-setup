@@ -41,6 +41,7 @@ static const Layout layouts[] = {
     { "", tile },   /* tile — icon  (fa-th, Nerd Font) was []= */
     { "", NULL },   /* floating — icon  (fa-window-restore) was ><> */
     { "", monocle }, /* monocle — icon  (fa-window-maximize) was [M] */
+    { "", grid }, /* grid: optimal auto-split */
 };
 
 #define MODKEY Mod4Mask /* Super key */
@@ -280,6 +281,8 @@ static const Key keys[] = {
 
     { MODKEY,              XK_j,        focusstack,     {.i = +1 } },
     { MODKEY,              XK_k,        focusstack,     {.i = -1 } },
+    { MODKEY|ShiftMask,    XK_j,        movestack,      {.i = +1 } },   /* swap focused window with next (down the stack) */
+    { MODKEY|ShiftMask,    XK_k,        movestack,      {.i = -1 } },   /* swap focused window with previous (up the stack) */
     { MODKEY,              XK_i,        incnmaster,     {.i = +1 } },
     { MODKEY,              XK_d,        incnmaster,     {.i = -1 } },
     { MODKEY,              XK_h,        setmfact,       {.f = -0.05} },
@@ -297,6 +300,7 @@ static const Key keys[] = {
     { MODKEY,              XK_f,        togglefullscreen, {0} },                           /* fullscreen current window */
     { MODKEY|ShiftMask,    XK_f,        setlayout,      {.v = &layouts[1]} },            /* floating */
     { MODKEY,              XK_m,        setlayout,      {.v = &layouts[2]} },            /* monocle */
+    { MODKEY,              XK_o,        setlayout,      {.v = &layouts[3]} },            /* grid (optimal auto-split) */
     { MODKEY,              XK_y,        togglegroup,    {0} },                           /* Hyprland-like group (monocle toggle) */
     { MODKEY,              XK_space,    setlayout,      {0} },
 
