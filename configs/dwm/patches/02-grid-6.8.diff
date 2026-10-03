@@ -8,34 +8,37 @@
  static void incnmaster(const Arg *arg);
  static void keypress(XEvent *e);
  static void killclient(const Arg *arg);
-@@ -1741,6 +1742,34 @@
+@@ -1741,6 +1742,37 @@
  }
  
  void
 +grid(Monitor *m) {
-+	unsigned int i, n, cx, cy, cw, ch, aw, ah, cols, rows;
++	unsigned int n, cw, ch, cols, rows, r, k, nr, x, ypos;
 +	Client *c;
 +
-+	for(n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next))
++	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next))
 +		n++;
++	if (n == 0)
++		return;
 +
-+	/* grid dimensions */
-+	for(rows = 0; rows <= n/2; rows++)
-+		if(rows*rows >= n)
-+			break;
-+	cols = (rows && (rows - 1) * rows >= n) ? rows - 1 : rows;
++	/* grid dimensions: as square as possible, wider than tall */
++	for (cols = 0; cols * cols < n; cols++);
++	rows = (n + cols - 1) / cols;
 +
-+	/* window geoms (cell height/width) */
-+	ch = m->wh / (rows ? rows : 1);
-+	cw = m->ww / (cols ? cols : 1);
-+	for(i = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next)) {
-+		cx = m->wx + (i / rows) * cw;
-+		cy = m->wy + (i % rows) * ch;
-+		/* adjust height/width of last row/column's windows */
-+		ah = ((i + 1) % rows == 0) ? m->wh - ch * rows : 0;
-+		aw = (i >= rows * (cols - 1)) ? m->ww - cw * cols : 0;
-+		resize(c, cx, cy, cw - 2 * c->bw + aw, ch - 2 * c->bw + ah, False);
-+		i++;
++	/* row-major fill: leading rows take the extras, so every row is full
++	 * width and no screen area stays empty (e.g. 3 windows = 2 on top,
++	 * 1 full-width below) */
++	ypos = m->wy;
++	c = nexttiled(m->clients);
++	for (r = 0; r < rows && c; r++) {
++		nr = n / rows + (r < n % rows ? 1 : 0);
++		ch = (r == rows - 1) ? (m->wy + m->wh - ypos) : m->wh / rows;
++		for (k = 0; k < nr && c; k++, c = nexttiled(c->next)) {
++			cw = (k == nr - 1) ? (m->wx + m->ww - (m->wx + k * (m->ww / nr))) : m->ww / nr;
++			x = m->wx + k * (m->ww / nr);
++			resize(c, x, ypos, cw - 2 * c->bw, ch - 2 * c->bw, 0);
++		}
++		ypos += ch;
 +	}
 +}
 +
