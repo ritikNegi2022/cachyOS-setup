@@ -1,0 +1,254 @@
+#!/bin/bash
+# rec — simple lightweight screen recorder (X11 + ffmpeg, no GUI)
+# Usage:
+#   rec                    toggle fullscreen recording (start/stop)
+#   rec full               start fullscreen recording
+#   rec region             drag an area with the mouse (slop), then record it
+#   rec window             click a window, then record exactly that window
+#   rec active             record the currently focused window (no clicking)
+#   rec stop               stop current recording
+#   rec status             show current recording (or "not recording")
+# Audio (default: system sound):
+#   rec -a no              video only, no audio
+#   rec -a system          desktop/system sound only (default)
+#   rec -a mic             microphone only
+#   rec -a both            system sound + microphone mixed
+#   (also: rec --no-audio / rec -n as shorthand for -a no)
+#   rec region -a mic      flags combine with any capture target
+# File name (default: rec-YYYYMMDD-HHMMSS):
+#   rec -o demo              save as ~/Videos/demo.mp4 (.mp4 auto-added)
+#   rec window -o bug-hunt   custom name works with any target/audio combo
+# Output: ~/Videos/<name>.mp4 (h264 + aac, plays everywhere; default name rec-DATE).
+# Stop = press the same key again, or run `rec stop`.
+# Requires: ffmpeg (x11grab, libx264, aac); slop (region/window);
+#           xdotool (active); pactl (mic/both audio); notify-send.
+
+set -euo pipefail
+
+PIDFILE="/tmp/rec.pid"
+OUTDIR="$HOME/Videos"
+FPS="${REC_FPS:-30}"
+PRESET="ultrafast"
+CRF="${REC_CRF:-23}"
+
+have() { command -v "$1" >/dev/null 2>&1; }
+note() { have notify-send && notify-send -t 2000 "Screen recorder" "$*" 2>/dev/null || echo "rec: $*"; }
+die() { note "ERROR: $*"; exit 1; }
+
+usage() {
+    sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+is_running() {
+    [[ -f "$PIDFILE" ]] || return 1
+    local pid
+    pid="$(cat "$PIDFILE" 2>/dev/null || true)"
+    [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
+}
+
+stop_rec() {
+    if ! is_running; then
+        rm -f "$PIDFILE"
+        echo "not recording"
+        return 1
+    fi
+    local pid outfile
+    pid="$(cat "$PIDFILE")"
+    outfile="$(cat "$PIDFILE.out" 2>/dev/null || echo "$OUTDIR")"
+    # SIGINT lets ffmpeg finalize the mp4 header (SIGKILL would corrupt it)
+    kill -INT "$pid" 2>/dev/null || true
+    for _ in $(seq 1 50); do
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.1
+    done
+    kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
+    rm -f "$PIDFILE" "$PIDFILE.out"
+    if [[ -f "$outfile" ]]; then
+        note "Saved: $(basename "$outfile")"
+        echo "$outfile"
+    else
+        note "Stopped (file missing: $outfile)"
+        echo "stopped"
+    fi
+}
+
+# Print "<x>,<y> <WxH>" for the requested target, or return non-zero on cancel
+pick_geo() {
+    local mode="$1" geo pos size w h
+    case "$mode" in
+        region|select|-s)
+            have slop || die "slop not installed (sudo pacman -S --needed slop)"
+            geo="$(slop -t 0 -f "%x,%y %wx%h" 2>/dev/null)" || { echo "selection cancelled"; return 1; }
+            ;;
+        window|win|-w)
+            have slop || die "slop not installed (sudo pacman -S --needed slop)"
+            # slop snaps to window borders on click — same output format
+            geo="$(slop -t 0 -f "%x,%y %wx%h" 2>/dev/null)" || { echo "selection cancelled"; return 1; }
+            ;;
+        active|focus|-a)
+            have xdotool || die "xdotool not installed (sudo pacman -S --needed xdotool)"
+            local info
+            info="$(xdotool getactivewindow getwindowgeometry --shell 2>/dev/null)" || { echo "cannot query focused window"; return 1; }
+            local x y
+            x="$(echo "$info" | grep '^X=' | cut -d= -f2)"
+            y="$(echo "$info" | grep '^Y=' | cut -d= -f2)"
+            w="$(echo "$info" | grep '^WIDTH=' | cut -d= -f2)"
+            h="$(echo "$info" | grep '^HEIGHT=' | cut -d= -f2)"
+            geo="$x,$y ${w}x${h}"
+            ;;
+        *) return 1 ;;
+    esac
+    pos="${geo% *}"; size="${geo#* }"
+    w="${size%x*}"; h="${size#*x}"
+    # h264 needs even dimensions — shave 1px when odd
+    (( w % 2 )) && w=$((w - 1)); (( h % 2 )) && h=$((h - 1))
+    echo "${pos} ${w}x${h}"
+}
+
+# Resolve audio mode -> sets AUDIO_INPUTS (array) and AUDIO_MAP (array).
+# Modes: no | system | mic | both. Falls back gracefully when a device
+# is missing (warns, records what it can instead of failing).
+resolve_audio() {
+    local mode="$1"
+    AUDIO_INPUTS=()
+    AUDIO_MAP=()
+    AUDIO_DESC="$mode"
+    case "$mode" in
+        no|none|off) return 0 ;;
+        mic|microphone|m)
+            local mic="default"
+            if have pactl; then
+                mic="$(pactl get-default-source 2>/dev/null || echo default)"
+            fi
+            AUDIO_INPUTS=(-thread_queue_size 512 -f pulse -i "$mic")
+            AUDIO_DESC="mic ($mic)"
+            ;;
+        both|all|mix)
+            local sink mic="default" mon="default"
+            if have pactl; then
+                mic="$(pactl get-default-source 2>/dev/null || echo default)"
+                sink="$(pactl get-default-sink 2>/dev/null || echo "")"
+                [[ -n "$sink" ]] && mon="$sink.monitor"
+            fi
+            AUDIO_INPUTS=(-thread_queue_size 512 -f pulse -i "$mon"
+                          -thread_queue_size 512 -f pulse -i "$mic")
+            # mix desktop + mic into one stereo track
+            AUDIO_MAP=(-filter_complex "[1:a][2:a]amix=inputs=2:duration=longest:normalize=0[a]"
+                       -map 0:v -map "[a]"
+                       -c:v libx264 -preset "$PRESET" -crf "$CRF" -pix_fmt yuv420p
+                       -c:a aac -b:a 128k -ac 2 -ar 48000)
+            AUDIO_DESC="system+mic"
+            ;;
+        system|desktop|sys|*)  # default
+            local mon="default"
+            if have pactl; then
+                local sink
+                sink="$(pactl get-default-sink 2>/dev/null || echo "")"
+                if [[ -n "$sink" ]] && pactl list short sources 2>/dev/null | grep -qF "$sink.monitor"; then
+                    mon="$sink.monitor"
+                fi
+            fi
+            AUDIO_INPUTS=(-thread_queue_size 512 -f pulse -i "$mon")
+            AUDIO_DESC="system ($mon)"
+            ;;
+    esac
+}
+
+start_rec() {
+    local mode="${1:-full}" audio="${2:-${REC_AUDIO:-system}}"
+
+    have ffmpeg || die "ffmpeg not installed (sudo pacman -S --needed ffmpeg)"
+    is_running && { echo "already recording (pid $(cat "$PIDFILE")) — stopping instead"; stop_rec; return; }
+
+    local input=()
+    case "$mode" in
+        full|screen|"")
+            input=(-f x11grab -framerate "$FPS" -i "${DISPLAY:-:0.0}")
+            ;;
+        region|select|-s|window|win|-w|active|focus|-a)
+            local geo
+            geo="$(pick_geo "$mode")" || return 1
+            local pos="${geo% *}" size="${geo#* }"
+            input=(-f x11grab -framerate "$FPS" -video_size "$size" -i "${DISPLAY:-:0.0}+${pos}")
+            ;;
+        *)
+            echo "unknown target: $mode"; usage; return 1 ;;
+    esac
+
+    mkdir -p "$OUTDIR"
+    # Custom name (-o) or timestamp; just the file name — dir + .mp4 handled.
+    # Existing names get -1, -2... so a recording never overwrites another.
+    local outfile base stem suf=0
+    if [[ -n "${OUT_NAME:-}" ]]; then
+        base="${OUT_NAME%.mp4}"
+        base="$(basename "$base")"
+        # keep names filesystem-safe (spaces -> -, drop the rest)
+        base="$(echo "$base" | tr ' ' '-' | tr -cd 'A-Za-z0-9._-')"
+        [[ -z "$base" ]] && base="rec-$(date +%Y%m%d-%H%M%S)"
+        stem="$base"
+        outfile="$OUTDIR/$stem.mp4"
+        while [[ -e "$outfile" ]]; do
+            suf=$((suf + 1)); outfile="$OUTDIR/$stem-$suf.mp4"
+        done
+    else
+        outfile="$OUTDIR/rec-$(date +%Y%m%d-%H%M%S).mp4"
+    fi
+
+    resolve_audio "$audio"
+    local cmd=(ffmpeg -hide_banner -loglevel warning -y
+        -thread_queue_size 512 "${input[@]}" "${AUDIO_INPUTS[@]}")
+    if [[ "$audio" == "no" || "$audio" == "none" || "$audio" == "off" ]]; then
+        cmd+=(-c:v libx264 -preset "$PRESET" -crf "$CRF" -pix_fmt yuv420p
+              -an -movflags +faststart "$outfile")
+    elif [[ "$audio" == "both" || "$audio" == "all" || "$audio" == "mix" ]]; then
+        cmd+=("${AUDIO_MAP[@]}" -movflags +faststart "$outfile")
+    else
+        cmd+=(-c:v libx264 -preset "$PRESET" -crf "$CRF" -pix_fmt yuv420p
+              -c:a aac -b:a 128k -ac 2 -ar 48000
+              -movflags +faststart "$outfile")
+    fi
+
+    # Detached so closing the terminal keeps recording; pid tracked for stop
+    setsid -f "${cmd[@]}" >/dev/null 2>&1 < /dev/null
+    sleep 0.5
+    local pid
+    pid="$(pgrep -n -f "ffmpeg.*${outfile##*/}" || true)"
+    if [[ -z "$pid" ]]; then
+        die "ffmpeg failed to start (run: ffmpeg -f x11grab -i :0 -t 1 -f null -)"
+    fi
+    echo "$pid" > "$PIDFILE"
+    echo "$outfile" > "$PIDFILE.out"
+    note "Recording ($mode, $AUDIO_DESC) — run rec again to stop"
+    echo "recording -> $outfile (pid $pid)"
+}
+
+# --- arg parsing: target + flags in any order --------------------------------
+TARGET="full"
+AUDIO="${REC_AUDIO:-system}"
+OUT_NAME="${REC_NAME:-}"
+if [[ $# -eq 0 ]]; then
+    start_rec full "$AUDIO"  # bare `rec` = toggle fullscreen
+    exit 0
+fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        full|screen)                         TARGET="full"; shift ;;
+        region|select|-s)                     TARGET="region"; shift ;;
+        window|win|-w)                        TARGET="window"; shift ;;
+        active|focus)                         TARGET="active"; shift ;;
+        stop|kill)                            stop_rec; exit $? ;;
+        status|st)
+            is_running && echo "recording (pid $(cat "$PIDFILE")) -> $(cat "$PIDFILE.out" 2>/dev/null)" || echo "not recording"
+            exit 0 ;;
+        -a|--audio)                           AUDIO="${2:-system}"; shift 2 ;;
+        -a=*|--audio=*)                       AUDIO="${1#*=}"; shift ;;
+        -o|--output|--name)                   OUT_NAME="${2:-}"; shift 2 ;;
+        -o=*|--output=*|--name=*)             OUT_NAME="${1#*=}"; shift ;;
+        --no-audio|-n)                        AUDIO="no"; shift ;;
+        --fps)                                FPS="${2:-30}"; shift 2 ;;
+        --fps=*)                              FPS="${1#*=}"; shift ;;
+        -h|--help|help)                       usage; exit 0 ;;
+        *) echo "unknown arg: $1"; usage; exit 1 ;;
+    esac
+done
+start_rec "$TARGET" "$AUDIO"

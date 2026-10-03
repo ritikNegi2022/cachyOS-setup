@@ -213,6 +213,9 @@ static const char *mediaprevcmd[] = { "playerctl", "previous", NULL };
 static const char *mediastopcmd[] = { "playerctl", "stop", NULL };
 static const char *screenshotcmd[] = { "sh", "-c", "mkdir -p ~/Pictures && maim ~/Pictures/shot-$(date +%Y%m%d-%H%M%S).png && notify-send -t 1500 'Screenshot' 'saved to ~/Pictures'", NULL };
 static const char *selscreenshotcmd[] = { "sh", "-c", "mkdir -p ~/Pictures && maim -s ~/Pictures/shot-$(date +%Y%m%d-%H%M%S).png && notify-send -t 1500 'Screenshot' 'selection saved to ~/Pictures'", NULL };
+static const char *reccmd[] = { "rec", NULL };            /* toggle fullscreen recording -> ~/Videos */
+static const char *selreccmd[] = { "rec", "region", NULL }; /* record mouse-selected region */
+static const char *winreccmd[] = { "rec", "window", NULL }; /* record clicked window */
 static const char *lockcmd[]    = { "screen-lock", NULL };   /* slock black: lock screen, apps keep running */
 static const char *sleepcmd[]    = { "systemctl", "suspend", NULL };
 static const char *displaycmd[]  = { "sh", "-c", "xrandr --auto", NULL };
@@ -257,6 +260,9 @@ static const Key keys[] = {
     { 0,                   XF86XK_TouchpadToggle,   spawn, SHCMD("id=$(xinput list --id-only \"$(xinput list --name-only 2>/dev/null | grep -im1 -i touchpad)\" 2>/dev/null); [ -n \"$id\" ] && xinput toggle \"$id\"") },
     { 0,                   XK_Print,                spawn, {.v = screenshotcmd } },
     { ShiftMask,           XK_Print,                spawn, {.v = selscreenshotcmd } },
+    { MODKEY,              XK_r,                    spawn, {.v = reccmd } },          /* screen recorder toggle (fullscreen) */
+    { MODKEY|ShiftMask,    XK_r,                    spawn, {.v = selreccmd } },      /* screen recorder (select region) */
+    { MODKEY|ControlMask,  XK_r,                    spawn, {.v = winreccmd } },      /* screen recorder (click a window) */
     { MODKEY|ShiftMask,    XK_x,                    spawn, {.v = lockcmd } },   /* lock screen, apps keep running */
 
     /* --- Super clipboard: Super+C/X/V -> copy/cut/paste everywhere, terminal-safe --- */

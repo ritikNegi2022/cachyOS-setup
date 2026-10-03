@@ -52,6 +52,7 @@ REPO_BINARIES=(
     "qb"
     "helix-zen"
     "furl"
+    "rec"
 )
 
 # Verify repo binaries against the checksum manifest BEFORE installing:
@@ -315,7 +316,7 @@ log ""
 log "============================================"
 log "  BIN COPY COMPLETE"
 log "============================================"
-log "  Repo source:  $REPO_ROOT/bin/ (dsa, keypress-sound, aphone, amt, qb, helix-zen, furl)"
+log "  Repo source:  $REPO_ROOT/bin/ (dsa, keypress-sound, aphone, amt, qb, helix-zen, furl, rec)"
 log "  Extra source: $BIN_SRC (optional, old system)"
 log "  Destination:  $BIN_DST"
 log "  Copied: $COPIED binaries"
@@ -329,6 +330,7 @@ log "    - amt (Android MTP mount at ~/mnt/phone for TUI browsing with lf: amt |
 log "    - qb (qutebrowser profile launcher: qb [ritik|blank|luxa|developer|callsmaster] [url])"
 log "    - helix-zen (zen-mode toggle for Helix: helix-zen [on|off|toggle], bound to <space>z)"
 log "    - furl (file:// URL printer + clipboard copy: furl ./img.png)"
+log "    - rec (screen recorder: rec = toggle fullscreen, rec region = select area, rec stop)"
 log "  Short GUI alias (shim, needs package installed):"
 log "    - aft -> android-file-transfer (MTP drag-and-drop window)"
 log ""

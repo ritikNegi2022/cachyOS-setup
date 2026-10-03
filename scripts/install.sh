@@ -75,7 +75,7 @@ log "Installing official repo packages..."
     qutebrowser python-adblock \
     zathura zathura-pdf-mupdf \
     brightnessctl playerctl \
-    maim slop xdg-utils libnotify slock bc \
+    maim slop ffmpeg xdg-utils libnotify slock bc \
     android-tools android-file-transfer \
     clang rust-analyzer typescript-language-server lua-language-server \
     tailwindcss-language-server eslint-language-server eslint_d stylua \

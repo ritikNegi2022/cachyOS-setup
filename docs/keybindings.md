@@ -155,8 +155,13 @@ Note: `Super+minus` is kept as an alias for tag 10. Tag 10 has full `Ctrl` toggl
 | `XF86TouchpadToggle` | toggle touchpad | `xinput toggle` (`config.h:156`) |
 | `Print` | screenshot fullscreen `~/Pictures/shot-*.png` | `maim` (`config.h:157`) |
 | `Shift + Print` | screenshot selection | `maim -s` (`config.h:158`) |
+| `Super + r` | **screen record toggle** (fullscreen → `~/Videos/rec-*.mp4`, press again to stop) | `rec` (`bin/rec`, `config.h` `reccmd`) |
+| `Super + Shift + r` | **screen record selection** (drag area with mouse, press `Super+r` to stop) | `rec region` (`config.h` `selreccmd`) |
+| `Super + Ctrl + r` | **screen record window** (click a window, press `Super+r` to stop) | `rec window` (`config.h` `winreccmd`) |
 
 Volume/brightness poke `dwm-statusbar` via `USR1` for instant feedback (`configs/dwm/statusbar.sh:6`).
+
+Recorder CLI (`bin/rec`, also in `~/.bin`): `rec` = toggle fullscreen, `rec region` = drag area, `rec window` = click a window, `rec active` = focused window, `rec stop` / `rec status`. Audio: `-a system` (default, desktop sound), `-a mic` (microphone only), `-a both` (mixed), `-a no` / `--no-audio` (video only). Name: `-o demo` saves `~/Videos/demo.mp4` (`.mp4` auto-added, `-1`/`-2` on clash). Files land in `~/Videos/` (h264+aac).
 
 ## 9. Mouse (`config.h:215-227`)
 
