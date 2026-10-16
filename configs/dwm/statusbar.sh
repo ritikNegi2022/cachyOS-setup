@@ -130,22 +130,6 @@ update() {
     else
         spd_down="--"; spd_up="--"
     fi
-    # Internet check — cached (every 15s): a background single-ping decides
-    # online/offline, so the 1s tick itself never blocks. Offline forces 0b
-    # (LAN-only or dead uplink); no result yet means assume online.
-    net_ok_file="${XDG_RUNTIME_DIR:-/tmp}/.net_ok-${USER:-blank}"
-    net_ok=""; ok_epoch=""
-    [ -f "$net_ok_file" ] && read -r net_ok ok_epoch < "$net_ok_file" 2>/dev/null
-    case "$ok_epoch" in ''|*[!0-9]*) ok_epoch=0 ;; esac
-    read -r up_now _ < /proc/uptime 2>/dev/null
-    up_now=${up_now%.*}
-    case "$up_now" in ''|*[!0-9]*) up_now=0 ;; esac
-    if [ $((up_now - ok_epoch)) -gt 15 ] 2>/dev/null; then
-        ( if ping -c1 -W2 8.8.8.8 >/dev/null 2>&1 || ping -c1 -W2 1.1.1.1 >/dev/null 2>&1; then st=1; else st=0; fi
-          read -r up_then _ < /proc/uptime 2>/dev/null
-          printf '%s %s' "$st" "${up_then%.*}" > "$net_ok_file" 2>/dev/null ) &
-    fi
-    if [ "$net_ok" = "0" ] && [ -n "$iface" ]; then spd_down="0b"; spd_up="0b"; fi
     spd=$(printf '󰇚 %6s 󰕒 %6s' "$spd_down" "$spd_up")
 
     # CPU temperature — icon + value
